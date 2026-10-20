@@ -32,7 +32,8 @@ class Classification:
 def positions(text_lower: str, kw: Keyword) -> list[int]:
     k = kw.text.lower()
     if kw.ascii_word:                  # 失敗模式 9：英文短字要單字邊界，"systems" 不能中 "ems"
-        return [m.start() for m in re.finditer(rf"(?<![a-z0-9]){re.escape(k)}(?![a-z0-9])", text_lower)]
+        # 英文官網多半用複數（control panels）：後面可以多一個 s／es（英國試跑學到的）
+        return [m.start() for m in re.finditer(rf"(?<![a-z0-9]){re.escape(k)}(?:e?s)?(?![a-z0-9])", text_lower)]
     return [m.start() for m in re.finditer(re.escape(k), text_lower)]
 
 

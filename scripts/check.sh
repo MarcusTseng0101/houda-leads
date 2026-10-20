@@ -20,7 +20,7 @@ grep -rlE "^\s*(import|from)\s+httpx" src | grep -v "src/houda_leads/fetch.py" \
   && die "arch-2" "httpx 只能出現在 fetch.py"
 grep -rnE "(HD|FTB|TS|HB|HI|HA)-[0-9]|端子台|配電盤|電源供應器" src \
   && die "arch-3" "產業名稱／型號／關鍵字寫死在 src/（只能在 inputs/*.csv）"
-grep -rn "linkedin" src | grep -vE "src/houda_leads/(fetch|export)\.py" \
+grep -rn --exclude-dir=__pycache__ "linkedin" src | grep -vE "src/houda_leads/(fetch|export)\.py" \
   && die "linkedin" "只有 fetch.py（禁止清單）和 export.py（手動搜尋連結）可以提到 linkedin"
 
 grep -rnE "sk-ant-[A-Za-z0-9]" --exclude-dir=.git --exclude-dir=.venv . && die "secret" "repo 裡有 API key"

@@ -72,3 +72,11 @@ def test_extra_keywords_loaded_and_marked(R):
     extra = [k.text for k in ind.keywords if k.extra]
     assert "die casting" in extra and "sheet metal" in extra
     assert not any(k.extra for k in ind.keywords if k.text == "鈑金")    # 原表的字不會被標成補充
+
+
+def test_english_plural_matches_but_boundary_kept(cfg):
+    inds = [Industry("配電", (Keyword("control panel", True),)), Industry("EMS", (Keyword("ems", True),))]
+    c = classify.classify([extract.PageText("u", "We build bespoke control panels and switchboards.")], inds, cfg)
+    assert c.industry == "配電"
+    c = classify.classify([extract.PageText("u", "Integrated systems for factories.")], inds, cfg)
+    assert c.industry == ""                    # "systems" 還是不能中 "ems"
