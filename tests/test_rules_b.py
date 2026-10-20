@@ -80,3 +80,34 @@ def test_english_plural_matches_but_boundary_kept(cfg):
     assert c.industry == "配電"
     c = classify.classify([extract.PageText("u", "Integrated systems for factories.")], inds, cfg)
     assert c.industry == ""                    # "systems" 還是不能中 "ems"
+
+
+def test_registry_hint_breaks_tie_only_with_enough_hits(cfg):
+    inds = [Industry("電源", (Keyword("ups", True), Keyword("battery", True))),
+            Industry("配電", (Keyword("switchgear", True), Keyword("control panel", True)))]
+    t = [extract.PageText("u", "We make UPS systems, battery packs, switchgear and control panels.")]
+    assert classify.classify(t, inds, cfg).industry == ""                       # 2:2 分不出來
+    c = classify.classify(t, inds, cfg, ["配電"])
+    assert c.industry == "配電" and c.method == "關鍵字＋登記產業"
+    t = [extract.PageText("u", "UPS, battery, inverter, charger, rectifier. Also switchgear.")]
+    inds[0] = Industry("電源", tuple(Keyword(k, True) for k in ("ups", "battery", "inverter", "charger", "rectifier")))
+    inds[1] = Industry("配電", (Keyword("switchgear", True),))
+    c = classify.classify(t, inds, cfg, ["配電"])
+    assert c.industry != "配電"                     # 1 比 5：登記代碼不能蓋過網站上的證據
+
+
+def test_hinted_industries_from_codes(R):
+    assert R.hinted_industries("GB", ["27120"]) == ["配電盤與電機控制"]
+    assert set(R.hinted_industries("TW", ["28", "281"])) == {"配電盤與電機控制", "馬達、變壓器與電力設備"}
+    assert R.hinted_industries("GB", ["10710"]) == []
+
+
+def test_registry_hint_needs_two_hits_and_no_hinted_tie(cfg):
+    inds = [Industry("電源", (Keyword("battery", True),)), Industry("照明", (Keyword("led", True),)),
+            Industry("機械", (Keyword("plc", True),))]
+    t = [extract.PageText("u", "Battery powered LED, made by Hook plc.")]       # 1:1:1（HOOKPOD 的情況）
+    assert classify.classify(t, inds, cfg, ["機械"]).industry == ""
+    inds = [Industry("A", (Keyword("ups", True), Keyword("battery", True))),
+            Industry("B", (Keyword("switchgear", True), Keyword("busbar", True)))]
+    t = [extract.PageText("u", "UPS and battery systems, switchgear and busbar.")]
+    assert classify.classify(t, inds, cfg, ["A", "B"]).industry == ""           # 兩個都有提示又平手

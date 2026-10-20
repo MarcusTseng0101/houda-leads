@@ -78,6 +78,15 @@ class Rules:
     skipped_keywords: list[tuple[str, str]]     # (產業, 關鍵字)：被略過的，寫進跑步紀錄
     input_hashes: dict[str, str]
     countries: dict[str, dict] = field(default_factory=dict)   # 國家代碼 → country_rules.csv 那一列
+    registry_hints: list[tuple[str, str, str]] = field(default_factory=list)   # (國家, 代碼開頭, 產業)
+
+    def hinted_industries(self, country: str, codes: list[str]) -> list[str]:
+        """登記的產業代碼 → 可能的標準化產業（registry_hints.csv，前綴比對）。"""
+        out = []
+        for c, prefix, ind in self.registry_hints:
+            if c == country and any(code.startswith(prefix) for code in codes) and ind not in out:
+                out.append(ind)
+        return out
 
     def industry_names(self) -> list[str]:
         return [i.name for i in self.industries]
@@ -221,5 +230,16 @@ def load(inputs: Path, cfg: dict) -> Rules:
             countries = {r["國家代碼"].strip().upper(): {k: (v or "").strip() for k, v in r.items()}
                          for r in csv.DictReader(f) if (r.get("國家代碼") or "").strip()}
 
+    hints = []
+    hp = inputs / "registry_hints.csv"
+    if hp.exists():
+        names = {i.name for i in industries}
+        with hp.open(encoding="utf-8-sig", newline="") as f:
+            for r in csv.DictReader(f):
+                ind = r["標準化產業"].strip()
+                if ind not in names:
+                    raise RulesError(f"registry_hints.csv 的產業「{ind}」不在產業表裡")
+                hints.append((r["國家"].strip().upper(), r["代碼開頭"].strip(), ind))
+
     hashes = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()[:12] for p in sorted(inputs.glob("*.csv"))}
-    return Rules(industries, products, catalog, dnr, customers, partners, brands, skipped, hashes, countries)
+    return Rules(industries, products, catalog, dnr, customers, partners, brands, skipped, hashes, countries, hints)

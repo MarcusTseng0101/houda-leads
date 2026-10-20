@@ -1,0 +1,35 @@
+國家,代碼開頭,標準化產業,說明
+GB,26120,電子連接器、線材與EMS,SIC 2007 26120 Manufacture of loaded electronic boards
+GB,26200,電腦、伺服器與資訊設備,26200 Manufacture of computers and peripheral equipment
+GB,2630,通訊、RFID與物聯網,26301/26309 communication equipment
+GB,2651,測試、量測與分析儀器,26511～26514 measuring、testing、navigating instruments
+GB,26600,醫療與牙科設備,26600 irradiation、electromedical and electrotherapeutic equipment
+GB,2711,馬達、變壓器與電力設備,27110 electric motors、generators and transformers
+GB,27120,配電盤與電機控制,27120 electricity distribution and control apparatus
+GB,27200,電源、能源與充電設備,27200 batteries and accumulators
+GB,2731,電子連接器、線材與EMS,27310 fibre optic cables
+GB,2732,電子連接器、線材與EMS,27320 other electronic and electric wires and cables
+GB,2733,電子連接器、線材與EMS,27330 wiring devices
+GB,27400,照明、LED與顯示設備,27400 electric lighting equipment
+GB,27510,空調、通風與家電控制,27510 electric domestic appliances
+GB,2812,工業自動化與機械設備,28120 fluid power equipment
+GB,2813,工業自動化與機械設備,28131/28132 pumps and compressors
+GB,2822,工業自動化與機械設備,28220 lifting and handling equipment
+GB,2825,空調、通風與家電控制,28250 non-domestic cooling and ventilation equipment
+GB,2829,工業自動化與機械設備,28290 other general-purpose machinery
+GB,284,工業自動化與機械設備,28410/28490 metal forming machinery and machine tools
+GB,289,工業自動化與機械設備,28910～28990 other special-purpose machinery
+TW,271,電腦、伺服器與資訊設備,工廠登記主要產品 271 電腦及其週邊設備
+TW,272,通訊、RFID與物聯網,272 通訊傳播設備
+TW,273,消防、廣播與音響設備,273 視聽電子產品
+TW,275,測試、量測與分析儀器,275 量測、導航、控制設備及鐘錶
+TW,276,醫療與牙科設備,276 輻射及電子醫學設備
+TW,281,配電盤與電機控制,281 發電、輸電及配電機械（也含馬達、變壓器）
+TW,281,馬達、變壓器與電力設備,281 同上
+TW,282,電源、能源與充電設備,282 電池
+TW,283,電子連接器、線材與EMS,283 電線及配線器材
+TW,284,照明、LED與顯示設備,284 照明設備
+TW,285,空調、通風與家電控制,285 家用電器
+TW,291,工業自動化與機械設備,291 金屬加工用機械設備
+TW,292,工業自動化與機械設備,292 其他專用機械設備
+TW,293,工業自動化與機械設備,293 通用機械設備

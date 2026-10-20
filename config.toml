@@ -27,6 +27,8 @@ channel_signal_words = ["代理", "經銷", "通路", "distributor", "authorized
 # 多類命中時：第一名的關鍵字數 >= 第二名的 2 倍、而且至少 2 個，才直接採用（猜的，可調整）
 dominance_ratio = 2.0
 dominance_min_hits = 2
+# 命中多類時，登記產業代碼指向的那一類，命中數至少要是第一名的這個比例才採用（猜的，可調整）
+hint_min_share = 0.5
 evidence_window = 40            # 證據前後各取幾個字（猜的，可調整）
 # 關鍵字前面（同一句、最多 application_lookback 個字）出現這些字 → 說的是客戶的產業，只算「提及」
 application_markers = ["應用", "適用", "用於", "客戶", "application", "applications", "applied", "used in", "for use"]

@@ -77,7 +77,10 @@ def evidence_at(text: str, pos: int, length: int, window: int) -> str:
     return text[start:end].strip()
 
 
-def classify(texts: list[PageText], industries: list[Industry], cfg: dict) -> Classification:
+def classify(texts: list[PageText], industries: list[Industry], cfg: dict, hints: list[str] = ()) -> Classification:
+    """hints：登記的產業代碼指向的產業（registry_hints.csv）。只在命中多類、分不出來時拿來決定，
+    而且那一類的命中數要至少是第一名的 hint_min_share、也至少 dominance_min_hits 個（避免登記代碼蓋過網站上
+    明顯的證據，也避免只中 1 個字就硬判）；兩個有提示的產業平手時不判。"""
     c = cfg["classify"]
     window = int(c["evidence_window"])
     markers, lookback = c["application_markers"], int(c["application_lookback"])
@@ -115,8 +118,16 @@ def classify(texts: list[PageText], industries: list[Industry], cfg: dict) -> Cl
         method = "關鍵字"
     else:
         second = len(ranked[1][1])
+        share = float(c.get("hint_min_share", 0.5))
+        need = max(int(c["dominance_min_hits"]), share * len(top))   # 只中 1 個字的不算（試跑：1:1:1 平手被硬判）
+        ok = [(n, h) for n, h in ranked if n in hints and len(h) >= need]
+        if len(ok) > 1 and len(ok[0][1]) == len(ok[1][1]):         # 兩個有提示的產業平手：還是分不出來
+            ok = []
         if len(top) >= c["dominance_min_hits"] and len(top) >= c["dominance_ratio"] * second:
             method = "關鍵字(多數)"
+        elif ok:
+            top_name, top = ok[0]
+            method = "關鍵字＋登記產業"
         else:
             detail = "；".join(f"{k}({len(v)})" for k, v in ranked[:3])
             return Classification("", "人工", [], [], True, f"命中多類，無法判斷：{detail}", all_hits, mentioned)

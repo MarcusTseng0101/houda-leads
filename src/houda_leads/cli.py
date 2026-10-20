@@ -12,6 +12,7 @@ import argparse
 import csv
 import datetime as dt
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -56,7 +57,9 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
         confirm = extract.site_confirmation(texts, tax_id, n, label)
         if confirm != "未確認":
             break
-    cls = classify.classify(content, R.industries, cfg)
+    codes = re.findall(r"(?:^|、)(\d{2,5})", meta.get("工廠主要產品", ""))
+    hints = R.hinted_industries(country, codes)
+    cls = classify.classify(content, R.industries, cfg, hints)
     sig = channel.channel_signal(joined, cfg, R.competitor_brands)
     comp = channel.component_signal(" ".join(t.text for t in content), cfg)
     rec = match.recommend(cls.industry, R, cfg, sig, bool(comp)) if cls.industry else None
@@ -112,6 +115,8 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
         "工廠主要產品(登記)": meta.get("工廠主要產品", ""),
         "名單來源": meta.get("來源", ""),
         "標準化產業": cls.industry, "產業判定方式": cls.method,
+        "候選產業(命中數)": "；".join(f"{k}({len(v)})" for k, v in sorted(cls.all_hits.items(), key=lambda kv: -len(kv[1]))),
+        "登記代碼提示": "、".join(hints),
         "命中關鍵字": "、".join(cls.hits or [k for v in cls.all_hits.values() for k in v]),
         "證據原文": " | ".join(e for e, _ in cls.evidence),
         "證據網址": " | ".join(dict.fromkeys(u for _, u in cls.evidence)),
