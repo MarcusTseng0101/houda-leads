@@ -1,15 +1,17 @@
 """houda-leads 指令。
 
   houda-leads run --fixtures DIR --out DIR [--no-llm] [--limit N]
-  houda-leads run --source FILE ...        （第 5 步才實作）
+  houda-leads run --source 工廠登記.csv --websites 統編官網.csv --out DIR --limit 20
   houda-leads eval --gold FILE --json FILE （第 6 步才實作）
 """
 from __future__ import annotations
 
 import argparse
+import csv
 import datetime as dt
 import json
 import sys
+import time
 from pathlib import Path
 from urllib.parse import urljoin
 
@@ -109,20 +111,69 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
     }
 
 
+def load_websites(path: Path) -> dict[str, str]:
+    """統編 → 官網候選網址。官網是不是這家公司，由 process() 用統編／公司名再確認一次（失敗模式 4）。"""
+    with Path(path).open(encoding="utf-8-sig", newline="") as f:
+        return {r["統編"].strip(): (r.get("官網") or "").strip() for r in csv.DictReader(f) if r.get("統編", "").strip()}
+
+
+def source_sites(a, cfg, stats: dict):
+    from . import crawl, fetch, sources
+    if not a.websites:
+        raise NotYet("自動找官網（discover.py）還沒做：先用 --websites 給一份「統編,官網」對照表")
+    cands = {c.tax_id: c for c in sources.load_factory_registry(Path(a.source), cfg)}
+    stats["初篩後候選公司"] = len(cands)
+    web = load_websites(Path(a.websites))
+    fetcher = fetch.Fetcher(cfg, cache_dir=config.ROOT / "data" / "cache")
+    for tax in list(web)[: a.limit or None]:
+        c = cands.get(tax)
+        if c is None:
+            stats.setdefault("不在初篩名單", []).append(tax)
+            continue
+        t0 = time.monotonic()
+        pages, problems = crawl.crawl_site(fetcher, web[tax], cfg) if web[tax] else ([], ["沒有找到官網"])
+        stats.setdefault("每家秒數", []).append(round(time.monotonic() - t0, 1))
+        stats.setdefault("每家頁數", []).append(len(pages))
+        meta = {"公司名稱": c.name, "統編": c.tax_id, "url": web[tax], "工廠主要產品": "、".join(c.products)}
+        yield {"meta": meta, "pages": pages, "problems": problems}
+    stats["請求數"] = fetcher.requests
+    stats["對禁止網域的請求"] = fetcher.denied_requests
+
+
 def cmd_run(a) -> int:
     cfg = config.load()
     R = rules.load(config.ROOT / "inputs", cfg)
+    stats: dict = {}
     if a.source:
-        raise NotYet("--source 第 5 步才實作（需要一份真的工廠登記檔案）")
-    if not a.fixtures:
+        sites = source_sites(a, cfg, stats)
+        src = f"source:{a.source} websites:{a.websites}"
+    elif a.fixtures:
+        sites = load_fixture_sites(Path(a.fixtures))[: a.limit or None]
+        src = f"fixtures:{a.fixtures}"
+    else:
         print("需要 --fixtures 或 --source", file=sys.stderr)
         return 2
-    sites = load_fixture_sites(Path(a.fixtures))[: a.limit or None]
     today = dt.date.today()
-    rows = [process(s, R, cfg, today) for s in sites]
+    t0 = time.monotonic()
+    rows = []
+    for s in sites:
+        row = process(s, R, cfg, today)
+        if s.get("problems"):
+            row["備註"] = "；".join([row["備註"]] + s["problems"]).strip("；")
+            if not s["pages"]:
+                row["分流"], row["需人工確認(Y/N)"] = "需人工確認", "Y"
+        rows.append(row)
+    secs = stats.get("每家秒數") or []
+    if secs:
+        avg = sum(secs) / len(secs)
+        stats["平均每家秒數"] = round(avg, 1)
+        if "初篩後候選公司" in stats:
+            stats["推算全部候選要幾小時（只算爬網頁）"] = round(avg * stats["初篩後候選公司"] / 3600, 1)
     run_log = {
         "版本": __version__, "時間": dt.datetime.now().isoformat(timespec="seconds"),
-        "來源": f"fixtures:{a.fixtures}", "公司數": len(rows), "LLM": "未使用（第 3 步只用關鍵字）",
+        "來源": src, "公司數": len(rows), "總秒數": round(time.monotonic() - t0, 1),
+        "LLM": "未使用（只用關鍵字）",
+        **{k: (json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else v) for k, v in stats.items()},
         "輸入檔雜湊": json.dumps(R.input_hashes, ensure_ascii=False),
         "略過的關鍵字（單一個中文字，請修表）": "、".join(f"{i}：{k}" for i, k in R.skipped_keywords),
         "名單說明": "既有客戶和代理商只比對公開名單（官網 logo 和首頁），不完整",
@@ -147,7 +198,8 @@ def main(argv=None) -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
     r.add_argument("--fixtures")
-    r.add_argument("--source")
+    r.add_argument("--source", help="工廠登記 CSV（data.gov.tw 資料集 6569）")
+    r.add_argument("--websites", help="「統編,官網」對照表；自動找官網做好之前必填")
     r.add_argument("--out", required=True)
     r.add_argument("--no-llm", action="store_true")
     r.add_argument("--limit", type=int)

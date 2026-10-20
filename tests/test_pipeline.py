@@ -73,5 +73,5 @@ def test_cli_run_writes_all_sheets(tmp_path):
     assert "跑步紀錄" in wb.sheetnames
 
 
-def test_source_mode_not_yet(tmp_path):
+def test_source_mode_needs_websites_until_discover_exists(tmp_path):
     assert cli.main(["run", "--source", "x.csv", "--out", str(tmp_path)]) == 2

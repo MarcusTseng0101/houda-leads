@@ -52,3 +52,9 @@ products_categories = "端子台類別"
 products_priority_level = "開發優先度"
 products_priority_order = "開發優先順序"
 products_note = "選型與開發提醒"
+
+[sources]
+# 工廠登記初篩：產業類別 2 碼大類（26 電子零組件、27 電腦電子光學、28 電力設備、29 機械設備）
+factory_industry_codes = ["26", "27", "28", "29"]
+# 只留公司型態（獨資、合夥多半沒有官網，也比較少自製電控）（猜的，可調整）
+org_types = ["股份有限公司"]
