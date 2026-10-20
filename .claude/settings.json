@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push origin main:*)",
+      "Bash(rm -rf:*)",
+      "Edit(inputs/**)",
+      "Write(inputs/**)",
+      "WebFetch(domain:linkedin.com)",
+      "WebFetch(domain:www.linkedin.com)"
+    ],
+    "ask": [
+      "Bash(uv add:*)",
+      "Bash(pip install:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash|Edit|Write",
+        "hooks": [{ "type": "command", "command": "python .claude/hooks/guard.py" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "bash .claude/hooks/stop_check.sh" }] }
+    ]
+  }
+}

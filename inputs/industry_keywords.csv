@@ -1,0 +1,21 @@
+AI產業辨識關鍵字,
+供AI將客戶描述初步歸入標準產業；未命中或同時命中多類時，應回到客戶類別歸類表人工確認。,
+標準化產業,辨識關鍵字
+工業自動化與機械設備,工業自動化、自動化、機械設備、機械手臂、注塑機、射出成型機、cnc、貼標機、充填機、包裝機、繞線機、沖床、熔接機、清洗機、烙鐵、焊錫機、封口機、控制板模組、plc、控制器、industrial automation、sealing machine、control board module
+電源、能源與充電設備,電源供應器、電源控制、power supply、power board、逆變器、整流器、ups、不斷電、充電、電池、儲能、太陽能、bms、電源管理、穩壓器、avr、energy storage、charging、charging station
+配電盤與電機控制,配電盤、控制箱、機電控制、電機控制、溫度控制盤、高低壓、自動控制材料、開關配電、電氣開關、distribution panel、temperature control panel、power controller
+測試、量測與分析儀器,測試儀、測試設備、測試板、火花測試、分析儀、量測、儀器、電錶、感測器、傳感器、流量計、溫濕度、露點、荷重、壓力、扭力、光度計、spark tester、test board、chemical analyzer、analytical instruments、charging and discharging instruments
+消防、廣播與音響設備,消防、廣播、pa擴大、擴大機、音響、喇叭、揚聲器、警報器、播音、audio、amplifier、broadcast
+智慧建築、保全與門禁,智慧建築、智慧家居、保全、防盜、門禁、門鎖、對講、監控、自動門、電話總機、求救系統、security system、intercom、monitoring and video
+交通、車用與軌道設備,汽車、車用、機車、交通號誌、號誌、鐵道、車輛、automotive、railway
+空調、通風與家電控制,空調、冷氣、冷暖、通風、冷凍、暖氣、加熱、家電、空壓機、水泵、風扇、air conditioning、heater
+醫療與牙科設備,醫療、牙科、洗腎、臨床、生化、酵素免疫、dialysis、medical
+照明、LED與顯示設備,led、照明、燈具、燈條、調光、顯示器、字幕機、tft-lcd、lighting fixtures、dimmer
+通訊、RFID與物聯網,rfid、射頻識別、無線通訊、天線、物聯網、光纖、通訊、讀碼機、瓦斯讀表、智能電表、reader、smart meter、gas meter
+電腦、伺服器與資訊設備,工業電腦、伺服器、電腦系統、電腦機殼、atm、刷卡機、遊戲機、販賣機、computer system、industrial computer、open frame
+半導體、PCB與電子製造設備,半導體、pcb、印刷電路板、aoi、bga、光罩、晶片、ssd、nand、flash、smt、電子製造設備
+馬達、變壓器與電力設備,馬達、變壓器、電抗器、線圈、電感、發電機、吊車、電梯、motor、transformer
+電子連接器、線材與EMS,連接器、線材、線組、wire-to-board、board-to-board、ffc、fpc、電子組裝、ems
+金屬、模具與塑膠零件製造,金屬零件、模具設計、模具加工、鈑金、塑膠成型零件、射出成型、五金製品、鑄造
+電子零件通路與貿易,電子零件買賣、電子器材、電子設備批發、電子元件買賣、電子零件零售、主、被動元件、主被動元件
+其他商用與消費設備,爆米花機、電子秤、除草機、烘手機、給皂機、水龍頭、公共電話、煙火控制、電子交易、popcorn machine

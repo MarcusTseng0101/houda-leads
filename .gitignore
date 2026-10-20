@@ -1,0 +1,9 @@
+data/
+out/
+.env
+BUDGET_OK
+gold/
+.venv/
+__pycache__/
+inputs/existing_customers.csv
+inputs/channel_partners.csv
