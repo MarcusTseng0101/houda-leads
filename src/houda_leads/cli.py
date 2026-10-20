@@ -2,6 +2,7 @@
 
   houda-leads run --fixtures DIR --out DIR [--no-llm] [--limit N]
   houda-leads run --source 工廠登記.csv --websites 統編官網.csv --out DIR --limit 20
+  houda-leads run --list 國外名單.csv --out DIR   （公司名稱,國家,官網[,註冊編號,來源]）
   houda-leads eval --gold FILE --json FILE （第 6 步才實作）
 """
 from __future__ import annotations
@@ -43,7 +44,12 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
     joined = " ".join(t.text for t in texts)
     window = int(cfg["classify"]["evidence_window"])
 
-    confirm = extract.site_confirmation(texts, tax_id, name)
+    home = cfg["self"]["region"]
+    country = (meta.get("國家") or home).upper()
+    cinfo = R.countries.get(country)
+    region = cinfo["代理區域"] if cinfo else ""
+    outreach = cinfo["外聯規則"] if cinfo else "需確認（國家不在 country_rules.csv）"
+    confirm = extract.site_confirmation(texts, tax_id, name, "統編" if country == home else "註冊編號")
     cls = classify.classify(content, R.industries, cfg)
     sig = channel.channel_signal(joined, cfg, R.competitor_brands)
     comp = channel.component_signal(" ".join(t.text for t in content), cfg)
@@ -59,7 +65,7 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
         notes.append(cls.reason)
     if confirm == "未確認":
         review = True
-        notes.append("官網上找不到統編或完整公司名")
+        notes.append("官網上找不到統編（註冊編號）或完整公司名")
     if rec and rec.rule.spec_required and rec.role == match.ROLE_MAKER:   # 通路、EMS 本來就不直接推型號
         review = True
         notes.append("產業表寫「依規格另行選型」：先問對方規格，再從目錄挑")
@@ -77,20 +83,26 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
         review = True
     elif role == match.ROLE_CHANNEL:
         lane, follow = "潛在代理商", "業務決定（通路商）"
+        if country != home and (p := _region_partners(R, region)):
+            notes.append(f"該區已有公開代理 {p}：開發新通路前先確認代理合約（可能是獨家）")
     elif role in (match.ROLE_PARTNER, match.ROLE_CONFIRM, match.ROLE_COMPONENT):
         lane, follow = "通路與合作", "業務決定"
     elif review or not rec:
         lane, follow = "需人工確認", ""
     else:
         lane = "潛在客戶"
-        p = _region_partners(R, cfg["self"]["region"])
-        follow = f"未設定（該區公開代理：{p}）" if p else "未設定"
+        p = _region_partners(R, region) if region else ""
+        if country == home:
+            follow = f"未設定（該區公開代理：{p}）" if p else "未設定"
+        else:     # 國外：先給該區代理，避免和代理商搶客戶
+            follow = f"交給該區代理：{p}" if p else "未設定（這個國家沒有公開代理，業務決定）"
 
     first = contacts[0] if contacts else None
     col = cfg["columns"]
     rule = rec.rule if rec else None
     return {
-        "分流": lane, "統編": tax_id, "公司名稱": name, "官網": url, "官網確認": confirm,
+        "分流": lane, "統編": tax_id, "公司名稱": name, "國家": country, "代理區域": region, "外聯規則": outreach,
+        "官網": url, "官網確認": confirm,
         "工廠主要產品(登記)": meta.get("工廠主要產品", ""),
         "標準化產業": cls.industry, "產業判定方式": cls.method,
         "命中關鍵字": "、".join(cls.hits or [k for v in cls.all_hits.values() for k in v]),
@@ -144,18 +156,41 @@ def source_sites(a, cfg, stats: dict):
     stats["對禁止網域的請求"] = fetcher.denied_requests
 
 
+def list_sites(a, cfg, stats: dict):
+    """通用名單（國外）：名單自己附官網，不用 --websites。"""
+    from . import crawl, fetch, sources
+    cands = sources.load_company_list(Path(a.list))[: a.limit or None]
+    stats["名單公司數"] = len(cands)
+    stats["國家"] = {k: sum(c.country == k for c in cands) for k in dict.fromkeys(c.country for c in cands)}
+    fetcher = fetch.Fetcher(cfg, cache_dir=config.ROOT / "data" / "cache")
+    for c in cands:
+        t0 = time.monotonic()
+        pages, problems = crawl.crawl_site(fetcher, c.website, cfg) if c.website else ([], ["沒有找到官網"])
+        stats.setdefault("每家秒數", []).append(round(time.monotonic() - t0, 1))
+        stats.setdefault("每家頁數", []).append(len(pages))
+        meta = {"公司名稱": c.name, "統編": c.tax_id, "國家": c.country, "url": c.website}
+        if c.source:
+            problems = problems + [f"名單來源：{c.source}"]
+        yield {"meta": meta, "pages": pages, "problems": problems}
+    stats["請求數"] = fetcher.requests
+    stats["對禁止網域的請求"] = fetcher.denied_requests
+
+
 def cmd_run(a) -> int:
     cfg = config.load()
     R = rules.load(config.ROOT / "inputs", cfg)
     stats: dict = {}
-    if a.source:
+    if a.list:
+        sites = list_sites(a, cfg, stats)
+        src = f"list:{a.list}"
+    elif a.source:
         sites = source_sites(a, cfg, stats)
         src = f"source:{a.source} websites:{a.websites}"
     elif a.fixtures:
         sites = load_fixture_sites(Path(a.fixtures))[: a.limit or None]
         src = f"fixtures:{a.fixtures}"
     else:
-        print("需要 --fixtures 或 --source", file=sys.stderr)
+        print("需要 --fixtures、--source 或 --list", file=sys.stderr)
         return 2
     today = dt.date.today()
     t0 = time.monotonic()
@@ -204,6 +239,7 @@ def main(argv=None) -> int:
     r.add_argument("--fixtures")
     r.add_argument("--source", help="工廠登記 CSV（data.gov.tw 資料集 6569）")
     r.add_argument("--websites", help="「統編,官網」對照表；自動找官網做好之前必填")
+    r.add_argument("--list", help="通用名單 CSV（國外用）：公司名稱,國家,官網[,註冊編號,來源]")
     r.add_argument("--out", required=True)
     r.add_argument("--no-llm", action="store_true")
     r.add_argument("--limit", type=int)

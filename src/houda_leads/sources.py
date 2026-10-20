@@ -3,6 +3,10 @@
 工廠登記（data.gov.tw 資料集 6569「登記工廠名錄」，產業發展署）：
 欄位見 FACTORY_COLS。「工廠負責人姓名」是個資，這裡完全不讀（失敗模式 7）。
 同一個統編可能有好幾個廠，合併成一家公司。
+
+國外（使用者 2026-10-20：「客戶不限國內」）：沒有一份全世界的工廠登記，所以讀一份通用名單
+（LIST_COLS：公司名稱、國家、官網，可選註冊編號、來源）。名單從哪來由業務決定
+（展覽參展商名單、日本 gBizINFO、英國 Companies House…），每個來源的使用條款要先看過。
 """
 from __future__ import annotations
 
@@ -30,6 +34,9 @@ class Candidate:
     industries: list[str]              # 原文，例如「28電力設備及配備製造業」
     products: list[str]                # 原文，例如「281發電、輸電及配電機械」
     factories: list[str] = field(default_factory=list)
+    country: str = "TW"                # ISO 3166-1 兩碼
+    website: str = ""                  # 通用名單直接附官網
+    source: str = ""
 
 
 def company_name(factory_name: str) -> str:
@@ -85,3 +92,33 @@ def load_factory_registry(path: Path, cfg: dict) -> list[Candidate]:
                 cand.products.append(x)
         cand.factories.append(r[c["factory_name"]].strip())
     return list(by.values())
+
+
+LIST_COLS = {"name": "公司名稱", "country": "國家", "website": "官網"}
+LIST_OPTIONAL = {"reg_id": "註冊編號", "source": "來源"}
+
+
+def load_company_list(path: Path) -> list[Candidate]:
+    """通用名單（國外用）。註冊編號沒有就用公司名＋國家當 key；同一家出現兩次只留第一次。"""
+    text = _read_text(path)
+    reader = csv.DictReader(text.splitlines())
+    missing = [v for v in LIST_COLS.values() if v not in (reader.fieldnames or [])]
+    if missing:
+        raise ValueError(f"名單缺欄位 {missing}：需要 {list(LIST_COLS.values())}，可選 {list(LIST_OPTIONAL.values())}")
+    out, seen = [], set()
+    for i, r in enumerate(reader, start=2):
+        name = (r[LIST_COLS["name"]] or "").strip()
+        country = (r[LIST_COLS["country"]] or "").strip().upper()
+        if not name:
+            continue
+        if not re.fullmatch(r"[A-Z]{2}", country):
+            raise ValueError(f"名單第 {i} 列的國家「{country}」不是兩碼國家代碼（例如 DE、JP、US）")
+        reg = (r.get(LIST_OPTIONAL["reg_id"]) or "").strip()
+        key = reg or f"{country}:{name.lower()}"
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(Candidate(reg, name, "", "", [], [], [], country=country,
+                             website=(r[LIST_COLS["website"]] or "").strip(),
+                             source=(r.get(LIST_OPTIONAL["source"]) or "").strip()))
+    return out

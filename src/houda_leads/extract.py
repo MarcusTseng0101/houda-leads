@@ -11,6 +11,10 @@ HIDDEN_STYLE = re.compile(r"display\s*:\s*none|visibility\s*:\s*hidden", re.I)
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 TW_PHONE = re.compile(r"(?<!\d)(?:\+886-?|0)\d{1,2}-\d{3,4}-\d{3,4}(?!\d)")
 COMPANY_SUFFIX = re.compile(r"(股份有限公司|有限公司|企業社|工業社|公司)$")
+JP_AFFIX = re.compile(r"^(株式会社|有限会社)|(株式会社|有限会社)$")
+EN_SUFFIX = re.compile(r"[\s,]*\b(co\.?,?\s*ltd|ltd|limited|inc|incorporated|corp|corporation|company|"
+                       r"gmbh(?:\s*&\s*co\.?\s*kg)?|ag|kg|se|s\.?a|s\.?r\.?l|s\.?p\.?a|b\.?v|n\.?v|llc|plc|k\.?k|co)\.?$",
+                       re.I)
 
 
 @dataclass(frozen=True)
@@ -134,15 +138,29 @@ def contacts(pages: list[Page], site_url: str, sales_words: list[str]) -> list[C
 
 
 def company_core(name: str) -> str:
-    return COMPANY_SUFFIX.sub("", name.strip())
+    """去掉公司型態：中文（股份有限公司）、日文（株式会社）、英文（Co., Ltd.／GmbH／Inc. 可以疊好幾個）。"""
+    s = COMPANY_SUFFIX.sub("", name.strip())
+    s = JP_AFFIX.sub("", s).strip()
+    prev = None
+    while prev != s:
+        prev, s = s, EN_SUFFIX.sub("", s).strip(" ,.")
+    return s
 
 
-def site_confirmation(texts: list[PageText], tax_id: str, company_name: str) -> str:
-    """失敗模式 4：官網上要看得到統編，或完整公司名（去掉公司型態，至少 4 個字），才算確認。"""
+def _name_on_page(core: str, joined: str) -> bool:
+    if not re.fullmatch(r"[\x20-\x7e]+", core):
+        return core in joined
+    # 英文名：不分大小寫、空白壓成一個、要單字邊界（"Atom" 不能中 "atomic"）
+    c = re.sub(r"\s+", " ", core).lower()
+    return re.search(rf"(?<![a-z0-9]){re.escape(c)}(?![a-z0-9])", re.sub(r"\s+", " ", joined).lower()) is not None
+
+
+def site_confirmation(texts: list[PageText], tax_id: str, company_name: str, id_label: str = "統編") -> str:
+    """失敗模式 4：官網上要看得到統編（國外是註冊編號），或完整公司名（去掉公司型態，至少 4 個字），才算確認。"""
     joined = " ".join(t.text for t in texts)
     if tax_id and re.search(rf"(?<!\d){re.escape(tax_id)}(?!\d)", joined):
-        return "統編"
+        return id_label
     core = company_core(company_name)
-    if len(core) >= 4 and core in joined:
+    if len(core) >= 4 and _name_on_page(core, joined):
         return "公司名"
     return "未確認"

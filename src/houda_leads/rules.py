@@ -77,6 +77,7 @@ class Rules:
     competitor_brands: list[NamedEntry]
     skipped_keywords: list[tuple[str, str]]     # (產業, 關鍵字)：被略過的，寫進跑步紀錄
     input_hashes: dict[str, str]
+    countries: dict[str, dict] = field(default_factory=dict)   # 國家代碼 → country_rules.csv 那一列
 
     def industry_names(self) -> list[str]:
         return [i.name for i in self.industries]
@@ -213,5 +214,12 @@ def load(inputs: Path, cfg: dict) -> Rules:
     partners = _named(inputs / "public_channel_partners.csv", "名稱", "別名") + _named(inputs / "channel_partners.csv", "名稱", "別名")
     brands = _named(inputs / "competitor_brands.csv", "品牌", "別名")
 
+    countries = {}
+    cp = inputs / "country_rules.csv"
+    if cp.exists():
+        with cp.open(encoding="utf-8-sig", newline="") as f:
+            countries = {r["國家代碼"].strip().upper(): {k: (v or "").strip() for k, v in r.items()}
+                         for r in csv.DictReader(f) if (r.get("國家代碼") or "").strip()}
+
     hashes = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()[:12] for p in sorted(inputs.glob("*.csv"))}
-    return Rules(industries, products, catalog, dnr, customers, partners, brands, skipped, hashes)
+    return Rules(industries, products, catalog, dnr, customers, partners, brands, skipped, hashes, countries)
