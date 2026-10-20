@@ -2,6 +2,7 @@
 
   houda-leads run --fixtures DIR --out DIR [--no-llm] [--limit N]
   houda-leads run --source 工廠登記.csv --websites 統編官網.csv --out DIR --limit 20
+  houda-leads run --registry gb --source BasicCompanyData.zip --out DIR --sample 20
   houda-leads run --list 國外名單.csv --out DIR   （公司名稱,國家,官網[,註冊編號,來源]）
   houda-leads eval --gold FILE --json FILE （第 6 步才實作）
 """
@@ -49,7 +50,12 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
     cinfo = R.countries.get(country)
     region = cinfo["代理區域"] if cinfo else ""
     outreach = cinfo["外聯規則"] if cinfo else "需確認（國家不在 country_rules.csv）"
-    confirm = extract.site_confirmation(texts, tax_id, name, "統編" if country == home else "註冊編號")
+    label = "統編" if country == home else "註冊編號"
+    confirm = "未確認"
+    for n in [name] + list(meta.get("別名") or []):      # 日本公司的英文名也算
+        confirm = extract.site_confirmation(texts, tax_id, n, label)
+        if confirm != "未確認":
+            break
     cls = classify.classify(content, R.industries, cfg)
     sig = channel.channel_signal(joined, cfg, R.competitor_brands)
     comp = channel.component_signal(" ".join(t.text for t in content), cfg)
@@ -104,6 +110,7 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
         "分流": lane, "統編": tax_id, "公司名稱": name, "國家": country, "代理區域": region, "外聯規則": outreach,
         "官網": url, "官網確認": confirm,
         "工廠主要產品(登記)": meta.get("工廠主要產品", ""),
+        "名單來源": meta.get("來源", ""),
         "標準化產業": cls.industry, "產業判定方式": cls.method,
         "命中關鍵字": "、".join(cls.hits or [k for v in cls.all_hits.values() for k in v]),
         "證據原文": " | ".join(e for e, _ in cls.evidence),
@@ -156,6 +163,40 @@ def source_sites(a, cfg, stats: dict):
     stats["對禁止網域的請求"] = fetcher.denied_requests
 
 
+def registry_sites(a, cfg, stats: dict):
+    """國外政府登記（--registry gb|jp）：登記檔有官網就用，沒有就猜網域（discover.py，確認過才採用）。"""
+    from . import crawl, discover, fetch, sources
+    load = {"gb": sources.load_companies_house, "jp": sources.load_gbizinfo}[a.registry]
+    cands = load(Path(a.source), cfg)
+    stats["初篩後候選公司"] = len(cands)
+    if a.sample:                     # 試跑：固定種子抽樣（登記檔照名字排序，取前 N 家會全是 A 開頭）
+        import random
+        cands = random.Random(a.seed).sample(cands, min(a.sample, len(cands)))
+    cands = cands[: a.limit or None]
+    fetcher = fetch.Fetcher(cfg, cache_dir=config.ROOT / "data" / "cache")
+    for c in cands:
+        t0 = time.monotonic()
+        names = [c.name] + c.aliases
+        url, problems = c.website, []
+        if url:
+            pages, problems = crawl.crawl_site(fetcher, url, cfg)
+            how = "登記檔"
+        else:
+            url, _home, problems = discover.discover(fetcher, names, c.tax_id, c.country, cfg)
+            pages, more = crawl.crawl_site(fetcher, url, cfg) if url else ([], ["沒有找到官網"])
+            problems += more
+            how = "猜網域" if url else ""
+        stats.setdefault("官網從哪來", {}).setdefault(how or "沒找到", 0)
+        stats["官網從哪來"][how or "沒找到"] += 1
+        stats.setdefault("每家秒數", []).append(round(time.monotonic() - t0, 1))
+        stats.setdefault("每家頁數", []).append(len(pages))
+        meta = {"公司名稱": c.name, "統編": c.tax_id, "國家": c.country, "url": url, "別名": c.aliases,
+                "工廠主要產品": "、".join(c.industries + c.products), "來源": c.source}
+        yield {"meta": meta, "pages": pages, "problems": problems}
+    stats["請求數"] = fetcher.requests
+    stats["對禁止網域的請求"] = fetcher.denied_requests
+
+
 def list_sites(a, cfg, stats: dict):
     """通用名單（國外）：名單自己附官網，不用 --websites。"""
     from . import crawl, fetch, sources
@@ -183,6 +224,9 @@ def cmd_run(a) -> int:
     if a.list:
         sites = list_sites(a, cfg, stats)
         src = f"list:{a.list}"
+    elif a.source and a.registry != "tw":
+        sites = registry_sites(a, cfg, stats)
+        src = f"registry:{a.registry} source:{a.source}"
     elif a.source:
         sites = source_sites(a, cfg, stats)
         src = f"source:{a.source} websites:{a.websites}"
@@ -239,6 +283,10 @@ def main(argv=None) -> int:
     r.add_argument("--fixtures")
     r.add_argument("--source", help="工廠登記 CSV（data.gov.tw 資料集 6569）")
     r.add_argument("--websites", help="「統編,官網」對照表；自動找官網做好之前必填")
+    r.add_argument("--registry", choices=["tw", "gb", "jp"], default="tw",
+                   help="--source 是哪一種登記檔：tw 工廠登記、gb Companies House 快照、jp gBizINFO 基本情報")
+    r.add_argument("--sample", type=int, help="試跑：從初篩名單隨機抽 N 家（固定種子）")
+    r.add_argument("--seed", type=int, default=20261020)
     r.add_argument("--list", help="通用名單 CSV（國外用）：公司名稱,國家,官網[,註冊編號,來源]")
     r.add_argument("--out", required=True)
     r.add_argument("--no-llm", action="store_true")

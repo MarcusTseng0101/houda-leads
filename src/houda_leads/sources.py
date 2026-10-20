@@ -11,7 +11,9 @@
 from __future__ import annotations
 
 import csv
+import io
 import re
+import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -37,6 +39,7 @@ class Candidate:
     country: str = "TW"                # ISO 3166-1 兩碼
     website: str = ""                  # 通用名單直接附官網
     source: str = ""
+    aliases: list[str] = field(default_factory=list)   # 其他寫法（例如日本公司的英文名），確認官網用
 
 
 def company_name(factory_name: str) -> str:
@@ -121,4 +124,83 @@ def load_company_list(path: Path) -> list[Candidate]:
         out.append(Candidate(reg, name, "", "", [], [], [], country=country,
                              website=(r[LIST_COLS["website"]] or "").strip(),
                              source=(r.get(LIST_OPTIONAL["source"]) or "").strip()))
+    return out
+
+
+# ---- 英國 Companies House（Free Company Data Product，每月快照，免 key）----
+# 表頭有些欄位前面有空白（" CompanyNumber"），讀的時候去掉。檔案裡沒有董事姓名。
+GB_COLS = {"name": "CompanyName", "number": "CompanyNumber", "category": "CompanyCategory",
+           "status": "CompanyStatus", "accounts": "Accounts.AccountCategory",
+           "town": "RegAddress.PostTown", "postcode": "RegAddress.PostCode"}
+GB_SIC = [f"SICCode.SicText_{i}" for i in range(1, 5)]
+
+
+def _open_csv(path: Path):
+    """CSV 或只裝一個 CSV 的 zip（不用先解壓 2 GB）。"""
+    path = Path(path)
+    if path.suffix.lower() == ".zip":
+        z = zipfile.ZipFile(path)
+        name = next(n for n in z.namelist() if n.lower().endswith(".csv"))
+        return io.TextIOWrapper(z.open(name), encoding="utf-8-sig", newline="")
+    return path.open(encoding="utf-8-sig", newline="")
+
+
+def load_companies_house(path: Path, cfg: dict) -> list[Candidate]:
+    g = cfg["registries"]["gb"]
+    prefixes, cats = tuple(g["sic_prefixes"]), set(g["company_categories"])
+    excl = {x.upper() for x in g["exclude_account_categories"]}
+    out = []
+    with _open_csv(path) as f:
+        reader = csv.reader(f)
+        hdr = [h.strip() for h in next(reader)]
+        need = list(GB_COLS.values()) + GB_SIC
+        missing = [c for c in need if c not in hdr]
+        if missing:
+            raise ValueError(f"Companies House 檔缺欄位 {missing}：格式可能改了")
+        ix = {c: hdr.index(c) for c in need}
+        for r in reader:
+            if len(r) < len(hdr):
+                continue
+            get = lambda c: r[ix[c]].strip()
+            if get(GB_COLS["status"]) != "Active" or get(GB_COLS["category"]) not in cats:
+                continue
+            if get(GB_COLS["accounts"]).upper() in excl:
+                continue
+            sics = [get(c) for c in GB_SIC if get(c)]
+            codes = [s[:2] for s in sics]
+            if not any(s.startswith(prefixes) for s in sics):
+                continue
+            out.append(Candidate(get(GB_COLS["number"]), get(GB_COLS["name"]),
+                                 f"{get(GB_COLS['town'])} {get(GB_COLS['postcode'])}".strip(), "",
+                                 codes, sics, [], country="GB", source="Companies House 快照"))
+    return out
+
+
+# ---- 日本 gBizINFO 法人基本情報 CSV（下載要免費的 access token）----
+# 欄位照 help.info.gbiz.go.jp「法人基本情報CSVファイル」。「代表者名称」是個資，不讀（失敗模式 7）。
+JP_COLS = {"number": "法人番号", "name": "商号または名称", "name_en": "商号または名称（英字）",
+           "status": "状態", "industries": "事業種目", "website": "WebサイトURL", "summary": "事業概要",
+           "pref": "都道府県"}
+
+
+def load_gbizinfo(path: Path, cfg: dict) -> list[Candidate]:
+    words = cfg["registries"]["jp"]["industry_words"]
+    out = []
+    with _open_csv(path) as f:
+        reader = csv.DictReader(f)
+        missing = [c for c in JP_COLS.values() if c not in (reader.fieldnames or [])]
+        if missing:
+            raise ValueError(f"gBizINFO 檔缺欄位 {missing}：格式可能改了")
+        for r in reader:
+            get = lambda k: (r.get(JP_COLS[k]) or "").strip()
+            if get("status") == "閉鎖" or not get("name"):
+                continue
+            inds = [x.strip() for x in get("industries").split("|") if x.strip()]
+            if not any(w in x for x in inds for w in words):
+                continue
+            c = Candidate(get("number"), get("name"), get("pref"), "", [], inds,
+                          [get("summary")] if get("summary") else [], country="JP",
+                          website=get("website"), source="gBizINFO")
+            c.aliases = [get("name_en")] if get("name_en") else []
+            out.append(c)
     return out

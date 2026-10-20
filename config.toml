@@ -69,3 +69,22 @@ products_note = "選型與開發提醒"
 factory_industry_codes = ["26", "27", "28", "29"]
 # 只留公司型態（獨資、合夥多半沒有官網，也比較少自製電控）（猜的，可調整）
 org_types = ["股份有限公司"]
+
+[registries.gb]
+# Companies House 每月快照（Free Company Data Product）。SIC 2007 前兩碼：
+# 26 電腦電子光學、27 電力設備、28 機械設備（對應台灣工廠登記的 26～29）
+sic_prefixes = ["26", "27", "28"]
+company_categories = ["Private Limited Company", "Public Limited Company"]
+# 休眠、沒交帳、微型公司多半沒有官網，先排除（猜的，可調整）
+exclude_account_categories = ["DORMANT", "NO ACCOUNTS FILED", "MICRO ENTITY"]
+
+[registries.jp]
+# gBizINFO 法人基本情報 CSV「事業種目」（日本標準産業分類）含這些字就留（欄位實際格式還沒用真檔確認）
+industry_words = ["電子部品", "電気機械", "情報通信機械", "生産用機械", "業務用機械", "はん用機械"]
+
+[discover]
+max_candidates = 6              # 每家最多猜幾個網址（猜的，可調整）
+[discover.tlds]
+GB = [".co.uk", ".com", ".uk"]
+JP = [".co.jp", ".jp", ".com"]
+default = [".com"]

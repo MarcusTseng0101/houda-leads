@@ -158,8 +158,11 @@ def _name_on_page(core: str, joined: str) -> bool:
 def site_confirmation(texts: list[PageText], tax_id: str, company_name: str, id_label: str = "統編") -> str:
     """失敗模式 4：官網上要看得到統編（國外是註冊編號），或完整公司名（去掉公司型態，至少 4 個字），才算確認。"""
     joined = " ".join(t.text for t in texts)
-    if tax_id and re.search(rf"(?<!\d){re.escape(tax_id)}(?!\d)", joined):
-        return id_label
+    # 英國公司編號 01234567 在網頁上常寫成 1234567：去掉開頭的 0 也算（剩下至少 5 碼）
+    ids = [tax_id] + ([tax_id.lstrip("0")] if tax_id and len(tax_id.lstrip("0")) >= 5 else [])
+    for i in filter(None, dict.fromkeys(ids)):
+        if re.search(rf"(?<![\dA-Za-z]){re.escape(i)}(?!\d)", joined):
+            return id_label
     core = company_core(company_name)
     if len(core) >= 4 and _name_on_page(core, joined):
         return "公司名"
