@@ -33,7 +33,7 @@ def test_reference_series_exist_in_catalog(R):
     series = {c.series for c in R.catalog}
     for p in R.products.values():
         for s in p.series:
-            assert any(x == s or x.startswith(s) for x in series), (p.industry, s)
+            assert s in series, (p.industry, s)      # match.py 用完全相同比對
 
 
 def test_categories_mapped_to_catalog_names(R):

@@ -1,18 +1,32 @@
 # PROGRESS
 
 ## 完成
-- （harness 已就緒：check.sh、verify_output.py、fixtures、hooks）
+- 第 1 步 rules.py：18 類產業兩張表對得上；目錄 224 項；公開名單（客戶 16、代理商 6、競品 14 個品牌）
+- 第 2 步 fetch.py：禁止網域（含轉址：測試抓到 httpx 自動轉址會先送出請求，已改成手動跟轉址）、robots、速率限制、快取
+- 第 3 步 extract／classify（只用關鍵字）／match（參考系列＋同規格類推）／channel（既有客戶、代理商、競品、提到自家）／export
+  - `check.sh --stage offline` 全部通過；pytest 57 個
+  - 範例：`uv run houda-leads run --fixtures examples/demo_sites --out out/demo`（6 家虛構公司，每種分流各一）
 
 ## 進行中
+（無）
 
 ## 下一步
-- Build order 第 1 步：rules.py
+- 第 4 步 llm.py（要使用者決定用不用 LLM）
+- 第 5 步 sources.py／discover.py：要一份真的工廠登記開放資料檔案才能寫 parser；先試跑 20 家再報費用
 
 ## 待決定（問使用者）
-- LLM 要不要用？
-- gold/labels.csv 誰來標、什麼時候給？
-- 第一版要不要抓具名窗口？
+- LLM 要不要用？（不用：多類命中的全部送人工）
+- 具名窗口要不要抓？（目前只抓公司窗口）
+- gold/labels.csv（50 家驗收名單）誰來標？
+- 關鍵字表「主、被動元件」會拆出單字「主」：目前略過，請使用者改成「主被動元件」或刪掉
+
+## 開工時改到的 harness（作者在開工前修，不是為了讓檢查通過）
+- `.gitignore`：`data/`、`out/` → `/data`、`/out`（結尾斜線只比對已存在的資料夾，乾淨 repo 會誤判）
+- `check.sh`：API key 掃描排除 `.venv`
+- `.gitattributes`：關掉換行轉換（inputs 有雜湊檢查）
 
 ## 猜的數字（全部列在這）
-- 同一網域請求間隔 2 秒、每家最多 15 頁、LLM 網頁文字上限 6,000 字、BUDGET_OK 門檻 500 家
-- 成功門檻：產業判對 ≥ 80%、高優先命中 ≥ 70%；具名窗口保存 2 年
+- fetch：同一網域間隔 2 秒、每家最多 15 頁
+- match：同規格替代 Pitch 差 ≤ 0.5mm、每家最多 5 個
+- classify：多類命中時，第一名 ≥ 第二名 2 倍且至少 2 個關鍵字才採用；證據前後 40 字
+- 成功門檻：產業判對 ≥ 80%、高優先命中 ≥ 70%；具名窗口保存 2 年；BUDGET_OK 門檻 500 家
