@@ -1,0 +1,54 @@
+# houda-leads 設定。標「猜的」的數字都可以調，PROGRESS.md 有完整清單。
+# 換一家公司用這個工具時，要改的是這個檔案和 inputs/，不是 src/。
+
+[fetch]
+min_interval_seconds = 2.0      # 同一網域兩次請求的間隔（猜的，可調整）
+max_pages_per_company = 15      # 猜的，可調整；預算不夠時先砍成 8
+timeout_seconds = 20
+user_agent = "houda-leads/0.1 (B2B prospect research; contact: info@howder-tw.com)"
+# 只跟這些字眼的連結走（同網域）
+follow_link_words = ["product", "products", "about", "contact", "產品", "關於", "聯絡", "公司簡介"]
+
+[match]
+alt_pitch_tolerance_mm = 0.5    # 同規格替代：Pitch 差距上限（猜的，可調整）
+alt_max = 5                     # 每家最多列幾個替代型號（猜的，可調整）
+spec_required_marker = "需依規格另行選型"   # 產業表裡「沒有參考型號」的寫法
+
+[roles]
+# 角色旗標：這幾類不和設備製造商一起排優先順序（產業表的「選型與開發提醒」寫明的）
+channel_industries = ["電子零件通路與貿易"]
+partner_industries = ["電子連接器、線材與EMS"]
+confirm_first_industries = ["金屬、模具與塑膠零件製造"]
+# 官網出現這些字，加上提到競品品牌，就當成通路商
+channel_signal_words = ["代理", "經銷", "通路", "distributor", "authorized dealer", "agent"]
+
+[classify]
+# 多類命中時：第一名的關鍵字數 >= 第二名的 2 倍、而且至少 2 個，才直接採用（猜的，可調整）
+dominance_ratio = 2.0
+dominance_min_hits = 2
+evidence_window = 40            # 證據前後各取幾個字（猜的，可調整）
+
+[self]
+# 自己公司的名稱：對方網站提到 → 可能是既有客戶或在賣我們產品的通路
+names = ["厚達", "How Der", "Howder"]
+region = "TW"
+
+[contacts]
+retention_years = 2             # 具名窗口保存期限（猜的，可調整）
+legal_basis = "個資法19-1-7（一般可得之來源）"
+sales_mailbox_words = ["sales", "業務", "market", "order"]
+
+[columns]
+# 使用者產業表的欄位名稱（換一家公司的表，改這裡就好）
+keywords_header_first = "標準化產業"
+keywords_name = "標準化產業"
+keywords_words = "辨識關鍵字"
+products_header_first = "產業大類"
+products_industry = "產業大類"
+products_customer_types = "常見客戶／設備類型"
+products_application = "端子台應用位置"
+products_series = "參考產品系列型號"
+products_categories = "端子台類別"
+products_priority_level = "開發優先度"
+products_priority_order = "開發優先順序"
+products_note = "選型與開發提醒"
