@@ -5,6 +5,7 @@
 min_interval_seconds = 2.0      # 同一網域兩次請求的間隔（猜的，可調整）
 max_pages_per_company = 15      # 猜的，可調整；預算不夠時先砍成 8
 timeout_seconds = 20
+max_seconds_per_company = 120     # 一家最多抓幾秒（英國試跑有一家逾時累積到 730 秒）（猜的，可調整）
 user_agent = "houda-leads/0.1 (B2B prospect research; contact: info@howder-tw.com)"
 # 只跟這些字眼的連結走（同網域）
 follow_link_words = ["product", "products", "about", "contact", "產品", "關於", "聯絡", "公司簡介"]
@@ -84,6 +85,7 @@ industry_words = ["電子部品", "電気機械", "情報通信機械", "生産�
 
 [discover]
 max_candidates = 6              # 每家最多猜幾個網址（猜的，可調整）
+proof_pages = 3                 # 首頁只看到公司名時，再看幾頁找註冊編號／郵遞區號（猜的，可調整）
 [discover.tlds]
 GB = [".co.uk", ".com", ".uk"]
 JP = [".co.jp", ".jp", ".com"]

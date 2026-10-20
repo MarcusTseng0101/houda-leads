@@ -40,6 +40,7 @@ class Candidate:
     website: str = ""                  # 通用名單直接附官網
     source: str = ""
     aliases: list[str] = field(default_factory=list)   # 其他寫法（例如日本公司的英文名），確認官網用
+    postcode: str = ""                 # 國外登記的郵遞區號：猜網域時當第二個證據
 
 
 def company_name(factory_name: str) -> str:
@@ -172,7 +173,8 @@ def load_companies_house(path: Path, cfg: dict) -> list[Candidate]:
                 continue
             out.append(Candidate(get(GB_COLS["number"]), get(GB_COLS["name"]),
                                  f"{get(GB_COLS['town'])} {get(GB_COLS['postcode'])}".strip(), "",
-                                 codes, sics, [], country="GB", source="Companies House 快照"))
+                                 codes, sics, [], country="GB", source="Companies House 快照",
+                                 postcode=get(GB_COLS["postcode"])))
     return out
 
 

@@ -1,6 +1,7 @@
 """抓一家公司的官網：首頁＋同網域、看起來是產品／關於／聯絡的頁面。所有請求都經過 fetch.Fetcher。"""
 from __future__ import annotations
 
+import time
 from urllib.parse import urldefrag, urlsplit
 
 from . import extract
@@ -22,7 +23,12 @@ def crawl_site(fetcher, start_url: str, cfg: dict) -> tuple[list[extract.Page], 
     root = extract.site_root(start_url)
     pages, problems, seen = [], [], set()
     queue = [start_url]
+    budget = float(f.get("max_seconds_per_company", 0) or 0)
+    t0 = time.monotonic()
     while queue and len(pages) < cap:
+        if budget and time.monotonic() - t0 > budget:
+            problems.append(f"超過每家 {budget:.0f} 秒上限，停在 {len(pages)} 頁")
+            break
         url = urldefrag(queue.pop(0))[0]
         if url in seen:
             continue

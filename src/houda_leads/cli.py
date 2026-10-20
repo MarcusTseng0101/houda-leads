@@ -182,7 +182,7 @@ def registry_sites(a, cfg, stats: dict):
             pages, problems = crawl.crawl_site(fetcher, url, cfg)
             how = "登記檔"
         else:
-            url, _home, problems = discover.discover(fetcher, names, c.tax_id, c.country, cfg)
+            url, _home, problems = discover.discover(fetcher, names, c.tax_id, c.country, cfg, [c.postcode])
             pages, more = crawl.crawl_site(fetcher, url, cfg) if url else ([], ["沒有找到官網"])
             problems += more
             how = "猜網域" if url else ""

@@ -102,3 +102,22 @@ def test_registration_number_without_leading_zero():
     assert extract.site_confirmation(t, "01234567", "X Ltd", "註冊編號") == "註冊編號"
     t = [extract.PageText("u", "Order 912345678")]                   # 前後還有數字：不算
     assert extract.site_confirmation(t, "01234567", "X Ltd", "註冊編號") == "未確認"
+
+
+def test_name_alone_is_not_enough_for_guessed_domain(cfg):
+    """英國試跑：FINSPA LIMITED 猜到 finspa.com（烏克蘭浴缸店），只因為頁面有 FinSpa 就被採用。"""
+    other = "<html><body><p>FinSpa: wood-fired hot tubs, delivery across Ukraine.</p></body></html>"
+    ours = "<html><body><p>Finspa Ltd, Unit 4, Leeds LS1 1AA. General engineering.</p></body></html>"
+    f = FakeFetcher({"https://www.finspa.com/": other})
+    assert discover.discover(f, ["FINSPA LIMITED"], "07654321", "GB", cfg, ["LS1 1AA"])[0] == ""
+    f = FakeFetcher({"https://www.finspa.co.uk/": ours})
+    url, _, log = discover.discover(f, ["FINSPA LIMITED"], "07654321", "GB", cfg, ["ls11aa"])
+    assert url == "https://www.finspa.co.uk/" and "郵遞區號" not in log[-1] and "LS11AA".lower() in log[-1].lower()
+
+
+def test_second_proof_on_contact_page(cfg):
+    home = '<html><body><p>Acme Controls</p><a href="/contact-us">Contact</a></body></html>'
+    contact = "<html><body><p>Acme Controls Ltd, Leeds LS1 1AA</p></body></html>"
+    f = FakeFetcher({"https://www.acmecontrols.co.uk/": home, "https://www.acmecontrols.co.uk/contact-us": contact})
+    url, _, log = discover.discover(f, ["ACME CONTROLS LIMITED"], "01234567", "GB", cfg, ["LS1 1AA"])
+    assert url == "https://www.acmecontrols.co.uk/" and "LS1 1AA" in log[-1]
