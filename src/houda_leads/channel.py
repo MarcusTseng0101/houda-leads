@@ -57,3 +57,10 @@ def channel_signal(text: str, cfg: dict, brands: list[NamedEntry]) -> bool:
     """出現「代理／經銷」這類字，而且提到至少一個競品品牌，才當成通路商。"""
     words = [w for w in cfg["roles"]["channel_signal_words"] if find_alias(text, w) >= 0]
     return bool(words) and bool(brands_in(text, brands))
+
+
+def component_signal(text: str, cfg: dict) -> list[str]:
+    """元件／材料供應商：出現至少 min_hits 個不同的元件字眼才算（只有 1 個太容易誤中）。"""
+    c = cfg["component"]
+    hits = [w for w in c["signal_words"] if find_alias(text, w) >= 0]
+    return hits if len(hits) >= int(c["min_hits"]) else []

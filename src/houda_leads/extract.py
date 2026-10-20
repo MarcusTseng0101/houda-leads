@@ -36,23 +36,55 @@ def _collapse(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
-def _tree_without_hidden(html: str) -> HTMLParser:
+# 被拿掉的元素換成這個記號：證據片段不能跨過它（否則前後文字會黏成原文沒有的句子）
+SENTINEL = ""
+CHROME_SELECTOR = "nav, header, footer, aside, [role='navigation'], [role='banner'], [role='contentinfo']"
+CHROME_CLASS = re.compile(r"(?:^|[-_\s])(?:nav|navbar|menu|megamenu|footer|header|breadcrumbs?|sidebar)(?:[-_\s]|$)", re.I)
+MIN_CONTENT_RATIO = 0.3     # 拿掉選單後剩不到 3 成：多半是誤判，退回全文（猜的，可調整）
+
+
+def _remove(nodes) -> None:
+    for n in nodes:
+        try:
+            n.replace_with(SENTINEL)
+        except Exception:      # 已經跟著父節點一起被拿掉了
+            pass
+
+
+def _tree_without_hidden(html: str, drop_chrome: bool = False) -> HTMLParser:
     """失敗模式 10：先拿掉看不見的元素。這只是第一道防線，證據逐字檢查還是要做。"""
     tree = HTMLParser(html)
     doomed = list(tree.css("script, style, noscript, template, [hidden], [aria-hidden='true']"))
     doomed += [n for n in tree.css("[style]") if HIDDEN_STYLE.search(n.attributes.get("style") or "")]
-    for n in doomed:
-        try:
-            n.decompose()
-        except Exception:      # 已經跟著父節點一起被拿掉了
-            pass
+    _remove(doomed)
+    if drop_chrome:
+        chrome = list(tree.css(CHROME_SELECTOR))
+        chrome += [n for n in tree.css("[class], [id]")
+                   if CHROME_CLASS.search(n.attributes.get("class") or "") or CHROME_CLASS.search(n.attributes.get("id") or "")]
+        _remove(chrome)
     return tree
 
 
-def visible_text(html: str) -> str:
-    tree = _tree_without_hidden(html)
+def _text(tree: HTMLParser) -> str:
     root = tree.body or tree.root
     return _collapse(root.text(separator=" ")) if root else ""
+
+
+def visible_text(html: str) -> str:
+    """整頁看得見的文字（含選單、頁尾）：給官網確認、電話用（統編常常在頁尾）。"""
+    return _collapse(_text(_tree_without_hidden(html)).replace(SENTINEL, " "))
+
+
+def content_text(html: str) -> str:
+    """分類用：再拿掉選單、頁首頁尾、側欄。保留 SENTINEL 當成證據的邊界。
+
+    選單常列出「產品應用：電源、UPS…」，那是對方客戶的產業，不是對方做什麼（2026-10-20 試跑：統懋半導體）。
+    """
+    content = _text(_tree_without_hidden(html, drop_chrome=True))
+    full = visible_text(html)
+    if len(content.replace(SENTINEL, "").strip()) < MIN_CONTENT_RATIO * len(full):
+        return _text(_tree_without_hidden(html))
+    return content
 
 
 def links(html: str, base_url: str) -> list[tuple[str, str]]:

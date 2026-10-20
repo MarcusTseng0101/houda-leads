@@ -38,14 +38,16 @@ def _region_partners(R: rules.Rules, region: str) -> str:
 def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
     meta, pages = site["meta"], site["pages"]
     name, tax_id, url = meta.get("公司名稱", ""), meta.get("統編", ""), meta.get("url", "")
-    texts = [extract.PageText(p.url, extract.visible_text(p.html)) for p in pages]
+    texts = [extract.PageText(p.url, extract.visible_text(p.html)) for p in pages]          # 整頁（含頁尾）
+    content = [extract.PageText(p.url, extract.content_text(p.html)) for p in pages]        # 分類用（去掉選單）
     joined = " ".join(t.text for t in texts)
     window = int(cfg["classify"]["evidence_window"])
 
     confirm = extract.site_confirmation(texts, tax_id, name)
-    cls = classify.classify(texts, R.industries, cfg)
+    cls = classify.classify(content, R.industries, cfg)
     sig = channel.channel_signal(joined, cfg, R.competitor_brands)
-    rec = match.recommend(cls.industry, R, cfg, sig) if cls.industry else None
+    comp = channel.component_signal(" ".join(t.text for t in content), cfg)
+    rec = match.recommend(cls.industry, R, cfg, sig, bool(comp)) if cls.industry else None
     cust = channel.match_entry(name, R.customers)
     partner = channel.match_entry(name, R.channel_partners)
     self_ev = channel.mentions(joined, cfg["self"]["names"], window)
@@ -65,7 +67,9 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
         review = True
         notes.append("對方網站提到自家公司：可能是既有客戶或在賣我們產品的通路，聯絡前先確認")
 
-    role = rec.role if rec else ""
+    role = rec.role if rec else (match.ROLE_COMPONENT if comp else "")
+    if comp:
+        notes.append("看起來是元件／材料供應商（" + "、".join(comp) + "）：產業表提醒這類公司不一定直接用我們的產品")
     if partner:
         lane, follow = "既有代理商", f"既有代理商：{partner[0].name}"
     elif cust:
@@ -73,7 +77,7 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
         review = True
     elif role == match.ROLE_CHANNEL:
         lane, follow = "潛在代理商", "業務決定（通路商）"
-    elif role in (match.ROLE_PARTNER, match.ROLE_CONFIRM):
+    elif role in (match.ROLE_PARTNER, match.ROLE_CONFIRM, match.ROLE_COMPONENT):
         lane, follow = "通路與合作", "業務決定"
     elif review or not rec:
         lane, follow = "需人工確認", ""

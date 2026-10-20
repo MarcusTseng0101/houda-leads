@@ -27,6 +27,17 @@ channel_signal_words = ["代理", "經銷", "通路", "distributor", "authorized
 dominance_ratio = 2.0
 dominance_min_hits = 2
 evidence_window = 40            # 證據前後各取幾個字（猜的，可調整）
+# 關鍵字前面（同一句、最多 application_lookback 個字）出現這些字 → 說的是客戶的產業，只算「提及」
+application_markers = ["應用", "適用", "用於", "客戶", "application", "applications", "applied", "used in", "for use"]
+application_lookback = 30       # 猜的，可調整
+# 異體字（只能等長）：網站用的字 → 關鍵字表用的字
+text_variants = { "板金" = "鈑金", "臺" = "台", "線束" = "線組" }
+
+[component]
+# 元件／材料供應商：出現至少 min_hits 個不同的字 → 不當設備製造商（產業表：「IC或記憶體元件公司不一定直接使用端子台」）
+signal_words = ["二極體", "二極管", "電晶體", "MOSFET", "IGBT", "肖特基", "閘流體", "晶閘管", "整流器件",
+                "被動元件", "電阻器", "電容器", "晶圓代工", "IC設計", "diode", "transistor", "thyristor"]
+min_hits = 2                    # 猜的，可調整
 
 [self]
 # 自己公司的名稱：對方網站提到 → 可能是既有客戶或在賣我們產品的通路

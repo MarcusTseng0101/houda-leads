@@ -25,6 +25,7 @@ class RulesError(Exception):
 class Keyword:
     text: str            # 原文
     ascii_word: bool     # 純英數：要用單字邊界比對
+    extra: bool = False  # 來自 keywords_extra.csv（我們補的，不是使用者原表）
 
 
 @dataclass(frozen=True)
@@ -146,6 +147,7 @@ def load(inputs: Path, cfg: dict) -> Rules:
     kn, kw_ = col["keywords_name"], col["keywords_words"]
     industries = [Industry(r[kn], _keywords(r[kn], r.get(kw_, ""), skipped)) for r in kw_rows]
 
+
     aliases = {}
     ap = inputs / "category_aliases.csv"
     if ap.exists():
@@ -174,6 +176,21 @@ def load(inputs: Path, cfg: dict) -> Rules:
             "兩張表的產業名稱對不上（請使用者修表，不要自己改）："
             f"只在關鍵字表 {sorted(kw_names - pr_names)}；只在產品表 {sorted(pr_names - kw_names)}"
         )
+
+    # 補充關鍵字（英文官網、同義詞）：和使用者原表分開放，使用者可以自己刪改
+    xp = inputs / "keywords_extra.csv"
+    if xp.exists():
+        by_name = {i.name: i for i in industries}
+        with xp.open(encoding="utf-8-sig", newline="") as f:
+            for r in csv.DictReader(f):
+                ind = by_name.get(r["標準化產業"].strip())
+                if ind is None:
+                    raise RulesError(f"keywords_extra.csv 的產業「{r['標準化產業']}」不在產業表裡")
+                have = {k.text.lower() for k in ind.keywords}
+                add = tuple(Keyword(k.text, k.ascii_word, True) for k in _keywords(ind.name, r["補充關鍵字"], skipped)
+                            if k.text.lower() not in have)
+                by_name[ind.name] = Industry(ind.name, ind.keywords + add)
+        industries = [by_name[i.name] for i in industries]
 
     catalog = []
     with (inputs / "howder_catalog.csv").open(encoding="utf-8-sig", newline="") as f:

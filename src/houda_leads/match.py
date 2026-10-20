@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from .rules import CatalogItem, ProductRule, Rules
 
 ROLE_MAKER, ROLE_CHANNEL, ROLE_PARTNER, ROLE_CONFIRM = "設備製造商", "通路", "EMS或合作", "待確認"
+ROLE_COMPONENT = "元件廠"
 
 
 @dataclass
@@ -19,10 +20,12 @@ class Recommendation:
     role: str
 
 
-def role_for(industry: str, cfg: dict, channel_signal: bool = False) -> str:
+def role_for(industry: str, cfg: dict, channel_signal: bool = False, component_signal: bool = False) -> str:
     r = cfg["roles"]
     if channel_signal or industry in r["channel_industries"]:
         return ROLE_CHANNEL
+    if component_signal:
+        return ROLE_COMPONENT
     if industry in r["partner_industries"]:
         return ROLE_PARTNER
     if industry in r["confirm_first_industries"]:
@@ -59,10 +62,11 @@ def alternatives(rule: ProductRule, rules: Rules, cfg: dict) -> list[str]:
     return [k for k, _ in sorted(best.items(), key=lambda kv: kv[1])][:cap]
 
 
-def recommend(industry: str, rules: Rules, cfg: dict, channel_signal: bool = False) -> Recommendation | None:
+def recommend(industry: str, rules: Rules, cfg: dict, channel_signal: bool = False,
+              component_signal: bool = False) -> Recommendation | None:
     rule = rules.products.get(industry)
     if rule is None:
         return None
     series = [s for s in rule.series if s not in rules.do_not_recommend]
     alts = [] if rule.spec_required else alternatives(rule, rules, cfg)
-    return Recommendation(rule, series, alts, role_for(industry, cfg, channel_signal))
+    return Recommendation(rule, series, alts, role_for(industry, cfg, channel_signal, component_signal))
