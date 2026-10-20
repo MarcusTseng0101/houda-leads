@@ -1,0 +1,2 @@
+# 不做換行轉換：inputs/ 有 SHA256 檢查，.sh 要維持 LF
+* -text
