@@ -71,4 +71,4 @@
   - **沒有看每家的判斷**（gold 要獨立，不拿來調規則）
 - gold/labels_待標.xlsx：給業務的空白表（下拉選單、不放工具判斷）
 - `check.sh --stage final` 目前只缺 gold/labels.csv
-- 待決定：check.sh 第 21 行（arch-3）的 grep 也會掃到 __pycache__，改了檔案後第一次跑可能誤報（和 linkedin 那條一樣，要使用者同意才改）
+- check.sh 第 21 行（arch-3）的 grep 加 `--exclude-dir=__pycache__`（使用者 2026-10-26 同意；測過：舊 .pyc 不再誤報，src/ 真的寫死還是會擋）
