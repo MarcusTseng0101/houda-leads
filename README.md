@@ -29,6 +29,23 @@ uv run houda-leads run --list 國外名單.csv --out out/overseas --limit 20
 建議跟進會寫「交給該區代理」（歐洲 Comet、美國 BlockMaster、日本 ABA、中國逸特），避免和代理商搶客戶。
 `外聯規則` 是提醒，不是法律意見：德國、奧地利、韓國要先取得同意；寫「需確認」的寄之前問法務。
 
+## 驗收（gold）
+
+成功的定義在 `PROMPT.md`：業務標 50 家，`bash scripts/check.sh --stage final` 結束碼 0 才算完成。
+
+```bash
+# 1. 跑 gold 那 50 家（名單和官網在 data/gold/）
+uv run houda-leads run --source data/trial/factories_2026-09.csv --websites data/gold/websites_gold.csv --out out/gold_run
+# 2. 產生給業務標的空白表（不放工具的判斷，業務才會獨立判斷）
+uv run houda-leads label-sheet --leads out/gold_run/leads.csv --out gold/labels_待標.xlsx
+# 3. 業務標完 → 轉成 gold/labels.csv → 驗收
+uv run houda-leads gold-csv --xlsx gold/labels_待標.xlsx
+uv run houda-leads eval --gold gold/labels.csv --json out/eval.json
+bash scripts/check.sh --stage final
+```
+
+`out/eval.json` 會列每一類的判對比例和混淆到哪一類。**不准拿 gold 這 50 家調規則**。
+
 ## 換一家公司用
 
 改 `inputs/` 的表和 `config.toml`（表的欄位名稱、角色分類、自家公司名稱），不用改 `src/`。

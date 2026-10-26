@@ -63,3 +63,12 @@
   - 加「展覽／新聞」語境（關鍵字後面接 exhibition、expo、展覽 → 只算提及）
   - 試過「命中超過 5 類就不用登記代碼」：擋掉 2 錯也擋掉 2 對，分不開，拿掉（避免對著小樣本調門檻）
   - **規則在這裡凍結**，接著抽 gold 50 家（不准拿 gold 調規則，PROMPT.md 成功定義）
+
+## 2026-10-26 第 6 步：eval 做好，等業務標 gold
+- gold 50 家：工廠登記初篩 12,862 家裡沒用過的，種子 20261026（data/gold/gold50.csv）
+- 官網：subagent 用 searchcrawl 找到 32 家、18 家留空（data/gold/websites_gold.csv）；工具確認 24 家（公司名 23、統編 1）
+- out/gold_run：潛在客戶 9、通路與合作 3、需人工確認 38；每家 14.2 秒；禁止網域請求 0
+  - **沒有看每家的判斷**（gold 要獨立，不拿來調規則）
+- gold/labels_待標.xlsx：給業務的空白表（下拉選單、不放工具判斷）
+- `check.sh --stage final` 目前只缺 gold/labels.csv
+- 待決定：check.sh 第 21 行（arch-3）的 grep 也會掃到 __pycache__，改了檔案後第一次跑可能誤報（和 linkedin 那條一樣，要使用者同意才改）
