@@ -31,7 +31,12 @@ dominance_min_hits = 2
 hint_min_share = 0.5
 evidence_window = 40            # 證據前後各取幾個字（猜的，可調整）
 # 關鍵字前面（同一句、最多 application_lookback 個字）出現這些字 → 說的是客戶的產業，只算「提及」
-application_markers = ["應用", "適用", "用於", "客戶", "application", "applications", "applied", "used in", "for use"]
+application_markers = ["應用", "適用", "用於", "客戶", "application", "applications", "applied", "used in", "for use",
+                       "參展", "meet us at", "visit us at"]
+# 關鍵字「後面」（同一句、最多 application_lookahead 個字）出現這些字 → 是展覽名稱，只算「提及」
+# （台灣試跑：德淵的「Industrial Automation Exhibition」被算成做自動化設備）
+application_after_markers = ["展覽", "展會", "大展", "exhibition", "expo", "trade show", "trade fair"]
+application_lookahead = 30      # 猜的，可調整
 application_lookback = 30       # 猜的，可調整
 # 異體字（只能等長）：網站用的字 → 關鍵字表用的字
 text_variants = { "板金" = "鈑金", "臺" = "台", "線束" = "線組" }

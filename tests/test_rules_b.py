@@ -111,3 +111,11 @@ def test_registry_hint_needs_two_hits_and_no_hinted_tie(cfg):
             Industry("B", (Keyword("switchgear", True), Keyword("busbar", True)))]
     t = [extract.PageText("u", "UPS and battery systems, switchgear and busbar.")]
     assert classify.classify(t, inds, cfg, ["A", "B"]).industry == ""           # 兩個都有提示又平手
+
+
+def test_exhibition_names_are_only_mentions(cfg):
+    inds = [Industry("自動化", (Keyword("industrial automation", True), Keyword("automation", True)))]
+    t = [extract.PageText("u", "Meet Tex Year at Taipei International Industrial Automation Exhibition. 2019 參展 自動化")]
+    c = classify.classify(t, inds, cfg)
+    assert c.industry == "" and "自動化" in c.mentions
+

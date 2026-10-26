@@ -51,15 +51,25 @@ def normalize(text: str, variants: dict[str, str]) -> str:
     return low
 
 
-def in_application_context(low: str, pos: int, markers: list[str], lookback: int) -> bool:
-    """往回看到句子邊界（最多 lookback 個字），中間有應用語境的字就算。"""
+def in_application_context(low: str, pos: int, markers: list[str], lookback: int,
+                           after_markers: list[str] = (), lookahead: int = 0, length: int = 0) -> bool:
+    """往回看到句子邊界（最多 lookback 個字），中間有應用語境的字就算；
+    往後看（最多 lookahead 個字，不跨句子）有展覽名稱的字也算。"""
     start = max(0, pos - lookback)
     for i in range(pos - 1, start - 1, -1):
         if low[i] in BOUNDARY:
             start = i + 1
             break
     before = low[start:pos]
-    return any(m.lower() in before for m in markers)
+    if any(m.lower() in before for m in markers):
+        return True
+    end = min(len(low), pos + length + lookahead)
+    for i in range(pos + length, end):
+        if low[i] in BOUNDARY:
+            end = i
+            break
+    after = low[pos + length:end]
+    return any(m.lower() in after for m in after_markers)
 
 
 def evidence_at(text: str, pos: int, length: int, window: int) -> str:
@@ -84,6 +94,7 @@ def classify(texts: list[PageText], industries: list[Industry], cfg: dict, hints
     c = cfg["classify"]
     window = int(c["evidence_window"])
     markers, lookback = c["application_markers"], int(c["application_lookback"])
+    after_markers, lookahead = c.get("application_after_markers", []), int(c.get("application_lookahead", 0))
     variants = c.get("text_variants", {})
     found: dict[str, list[tuple[str, int, str, int]]] = {}   # 產業 → [(關鍵字, 頁序, 網址, 位置)]（做什麼）
     mentioned: dict[str, list[str]] = {}
@@ -96,7 +107,8 @@ def classify(texts: list[PageText], industries: list[Industry], cfg: dict, hints
                 ps = positions(low, kw)
                 if not ps:
                     continue
-                own = [p for p in ps if not in_application_context(low, p, markers, lookback)]
+                own = [p for p in ps if not in_application_context(low, p, markers, lookback,
+                                                                     after_markers, lookahead, len(kw.text))]
                 if own:
                     found.setdefault(ind.name, []).append((kw.text, pi, t.url, own[0]))
                 elif kw.text not in mentioned.get(ind.name, []):
