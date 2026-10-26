@@ -146,7 +146,7 @@ def write_label_sheet(leads: list[dict], industries: list[str], out: Path) -> in
     dv_yn.add(f"F2:F{n}")
     how = wb.create_sheet("怎麼標")
     for line in ["每家打開官網看一下，選「標準化產業」（這家公司自己做什麼，不是它的客戶做什麼）。",
-                 "「是否真的潛在客戶」：這家公司的產品會用到端子台、值得業務聯絡 → Y；否則 N。",
+                 "「是否真的潛在客戶」：這家公司的產品會用到我們的產品、值得業務聯絡 → Y；否則 N。",
                  "官網是工具找到的，可能錯；錯了在業務備註寫正確的官網。",
                  "標完存檔，交給我轉成 gold/labels.csv。不要看工具的判斷結果再標。"]:
         how.append([line])
