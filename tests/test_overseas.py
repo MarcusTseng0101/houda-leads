@@ -90,3 +90,8 @@ def test_load_company_list_rejects_bad_country_and_missing_columns(tmp_path):
         sources.load_company_list(write(tmp_path, [["X Ltd", "Germany", "https://x.example/", "", ""]]))
     with pytest.raises(ValueError, match="缺欄位"):
         sources.load_company_list(write(tmp_path, [["X Ltd", "https://x.example/"]], hdr=("公司名稱", "官網")))
+
+
+def test_fullwidth_company_name_matches_halfwidth_site():
+    t = [extract.PageText("u", "NOK静岡株式会社は自動車部品を製造しています")]
+    assert extract.site_confirmation(t, "", "ＮＯＫ静岡株式会社", "註冊編號") == "公司名"

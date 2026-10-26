@@ -182,11 +182,12 @@ def load_companies_house(path: Path, cfg: dict) -> list[Candidate]:
 # 欄位照 help.info.gbiz.go.jp「法人基本情報CSVファイル」。「代表者名称」是個資，不讀（失敗模式 7）。
 JP_COLS = {"number": "法人番号", "name": "商号または名称", "name_en": "商号または名称（英字）",
            "status": "状態", "industries": "事業種目", "website": "WebサイトURL", "summary": "事業概要",
-           "pref": "都道府県"}
+           "pref": "都道府県", "org": "組織種別"}
 
 
 def load_gbizinfo(path: Path, cfg: dict) -> list[Candidate]:
-    words = cfg["registries"]["jp"]["industry_words"]
+    j = cfg["registries"]["jp"]
+    words, orgs, need_web = j["industry_words"], set(j.get("org_types", [])), bool(j.get("require_website"))
     out = []
     with _open_csv(path) as f:
         reader = csv.DictReader(f)
@@ -196,6 +197,8 @@ def load_gbizinfo(path: Path, cfg: dict) -> list[Candidate]:
         for r in reader:
             get = lambda k: (r.get(JP_COLS[k]) or "").strip()
             if get("status") == "閉鎖" or not get("name"):
+                continue
+            if (orgs and get("org") not in orgs) or (need_web and not get("website")):
                 continue
             inds = [x.strip() for x in get("industries").split("|") if x.strip()]
             if not any(w in x for x in inds for w in words):

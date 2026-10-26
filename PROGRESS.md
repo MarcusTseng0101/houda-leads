@@ -72,3 +72,9 @@
 - gold/labels_待標.xlsx：給業務的空白表（下拉選單、不放工具判斷）
 - `check.sh --stage final` 目前只缺 gold/labels.csv
 - check.sh 第 21 行（arch-3）的 grep 加 `--exclude-dir=__pycache__`（使用者 2026-10-26 同意；測過：舊 .pyc 不再誤報，src/ 真的寫死還是會擋）
+
+## 2026-10-26 日本（使用者選 A，自己下載 gBizINFO）
+- 篩出 9,730 家；三輪試跑，詳見 docs/trial-jp-2026-10-26.md
+- 全形英數字轉半形（確認官網、比關鍵字）；keywords_extra 補日文、加「語言」欄；關鍵字分語言比
+- 日文「向け」「を導入」只算提及；**只中 1 個關鍵字不列潛在客戶**（min_hits_for_lead = 2，猜的）
+- 規則改了，gold 50 家重跑（沒看每家的結果）：分流和之前一樣；給業務的標註表不用重做（內容只有公司名和官網）

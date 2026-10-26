@@ -26,6 +26,7 @@ class Keyword:
     text: str            # 原文
     ascii_word: bool     # 純英數：要用單字邊界比對
     extra: bool = False  # 來自 keywords_extra.csv（我們補的，不是使用者原表）
+    lang: str = "zh"     # 中日文的字用哪個語言的網站比；英數字的字不分語言（日本試跑：中文「保全」中了日文「環境保全」）
 
 
 @dataclass(frozen=True)
@@ -197,7 +198,8 @@ def load(inputs: Path, cfg: dict) -> Rules:
                 if ind is None:
                     raise RulesError(f"keywords_extra.csv 的產業「{r['標準化產業']}」不在產業表裡")
                 have = {k.text.lower() for k in ind.keywords}
-                add = tuple(Keyword(k.text, k.ascii_word, True) for k in _keywords(ind.name, r["補充關鍵字"], skipped)
+                lang = (r.get("語言") or "zh").strip()
+                add = tuple(Keyword(k.text, k.ascii_word, True, lang) for k in _keywords(ind.name, r["補充關鍵字"], skipped)
                             if k.text.lower() not in have)
                 by_name[ind.name] = Industry(ind.name, ind.keywords + add)
         industries = [by_name[i.name] for i in industries]

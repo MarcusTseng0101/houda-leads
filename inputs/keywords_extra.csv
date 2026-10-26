@@ -1,32 +1,48 @@
-﻿標準化產業,補充關鍵字,說明
-工業自動化與機械設備,automation、machinery、robot arm、injection molding machine、packaging machine、labeling machine、filling machine、winding machine、welding machine、soldering machine、自動化設備、專用機,英文官網用；2026-10-20 補（非使用者原表）
-電源、能源與充電設備,inverter、rectifier、battery、solar、voltage regulator、power module、充電樁、電源模組,同上
-配電盤與電機控制,switchgear、control panel、control cabinet、motor control、配電箱,同上
-測試、量測與分析儀器,tester、test equipment、analyzer、measuring instrument、sensor、flow meter、load cell、檢測設備,同上
-消防、廣播與音響設備,fire alarm、public address、pa system、speaker、siren,同上
-智慧建築、保全與門禁,access control、door lock、surveillance、cctv、building automation,同上
-交通、車用與軌道設備,vehicle、traffic signal、ev charger、車輛電子,同上
-空調、通風與家電控制,hvac、ventilation、refrigeration、air compressor、home appliance、家用電器,同上
-醫療與牙科設備,dental、hemodialysis、clinical、diagnostic、醫療器材,同上
-照明、LED與顯示設備,lighting、luminaire、display、signage,同上
-通訊、RFID與物聯網,antenna、iot、wireless、fiber optic,同上
-電腦、伺服器與資訊設備,industrial pc、server、embedded computer、pos、kiosk,同上
-半導體、PCB與電子製造設備,semiconductor、wafer,同上
-馬達、變壓器與電力設備,reactor、coil、inductor、generator、elevator,同上
-電子連接器、線材與EMS,connector、cable assembly、wire harness,同上
-金屬、模具與塑膠零件製造,die casting、sheet metal、metal stamping、mold、mould、壓鑄、沖壓,同上
-工業自動化與機械設備,conveyor、special purpose machinery、bespoke machinery、machine builder、food processing machinery、pneumatic、hydraulic、compressed air、vacuum pump、robotics,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
-電源、能源與充電設備,uninterruptible power、battery charger、power conversion、dc power、power electronics,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
-配電盤與電機控制,panel builder、motor control centre、motor control center、mcc、switchboard、distribution board、electrical panel,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
-測試、量測與分析儀器,test and measurement、oscilloscope、calibration、data logger、instrumentation,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
-消防、廣播與音響設備,fire detection、smoke detector、fire panel、voice alarm,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
-智慧建築、保全與門禁,alarm system、door entry,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
-交通、車用與軌道設備,rolling stock、ev charging,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
-空調、通風與家電控制,water heater、hand dryer、heat pump、boiler、chiller、air handling,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
-醫療與牙科設備,medical device、laboratory equipment,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
-照明、LED與顯示設備,emergency lighting、light fitting,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
-通訊、RFID與物聯網,telecommunications、radio frequency,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
-電腦、伺服器與資訊設備,data centre、rugged computer,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
-電子連接器、線材與EMS,pcb assembly、contract electronics、box build、electronic manufacturing services,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
-馬達、變壓器與電力設備,electric motor、alternator、motor rewind、generator set,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
-金屬、模具與塑膠零件製造,fabrication、cnc machining、precision engineering,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+﻿標準化產業,補充關鍵字,語言,說明
+工業自動化與機械設備,automation、machinery、robot arm、injection molding machine、packaging machine、labeling machine、filling machine、winding machine、welding machine、soldering machine、自動化設備、專用機,zh,英文官網用；2026-10-20 補（非使用者原表）
+電源、能源與充電設備,inverter、rectifier、battery、solar、voltage regulator、power module、充電樁、電源模組,zh,同上
+配電盤與電機控制,switchgear、control panel、control cabinet、motor control、配電箱,zh,同上
+測試、量測與分析儀器,tester、test equipment、analyzer、measuring instrument、sensor、flow meter、load cell、檢測設備,zh,同上
+消防、廣播與音響設備,fire alarm、public address、pa system、speaker、siren,zh,同上
+智慧建築、保全與門禁,access control、door lock、surveillance、cctv、building automation,zh,同上
+交通、車用與軌道設備,vehicle、traffic signal、ev charger、車輛電子,zh,同上
+空調、通風與家電控制,hvac、ventilation、refrigeration、air compressor、home appliance、家用電器,zh,同上
+醫療與牙科設備,dental、hemodialysis、clinical、diagnostic、醫療器材,zh,同上
+照明、LED與顯示設備,lighting、luminaire、display、signage,zh,同上
+通訊、RFID與物聯網,antenna、iot、wireless、fiber optic,zh,同上
+電腦、伺服器與資訊設備,industrial pc、server、embedded computer、pos、kiosk,zh,同上
+半導體、PCB與電子製造設備,semiconductor、wafer,zh,同上
+馬達、變壓器與電力設備,reactor、coil、inductor、generator、elevator,zh,同上
+電子連接器、線材與EMS,connector、cable assembly、wire harness,zh,同上
+金屬、模具與塑膠零件製造,die casting、sheet metal、metal stamping、mold、mould、壓鑄、沖壓,zh,同上
+工業自動化與機械設備,conveyor、special purpose machinery、bespoke machinery、machine builder、food processing machinery、pneumatic、hydraulic、compressed air、vacuum pump、robotics,zh,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+電源、能源與充電設備,uninterruptible power、battery charger、power conversion、dc power、power electronics,zh,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+配電盤與電機控制,panel builder、motor control centre、motor control center、mcc、switchboard、distribution board、electrical panel,zh,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+測試、量測與分析儀器,test and measurement、oscilloscope、calibration、data logger、instrumentation,zh,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+消防、廣播與音響設備,fire detection、smoke detector、fire panel、voice alarm,zh,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+智慧建築、保全與門禁,alarm system、door entry,zh,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+交通、車用與軌道設備,rolling stock、ev charging,zh,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+空調、通風與家電控制,water heater、hand dryer、heat pump、boiler、chiller、air handling,zh,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+醫療與牙科設備,medical device、laboratory equipment,zh,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+照明、LED與顯示設備,emergency lighting、light fitting,zh,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+通訊、RFID與物聯網,telecommunications、radio frequency,zh,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+電腦、伺服器與資訊設備,data centre、rugged computer,zh,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+電子連接器、線材與EMS,pcb assembly、contract electronics、box build、electronic manufacturing services,zh,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+馬達、變壓器與電力設備,electric motor、alternator、motor rewind、generator set,zh,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+金屬、模具與塑膠零件製造,fabrication、cnc machining、precision engineering,zh,英國試跑後補的一般英文用語（非使用者原表，2026-10-20）
+工業自動化與機械設備,産業機械、自動機、省力化機械、専用機、生産設備、包装機、射出成形機、工作機械、搬送装置、コンベア、産業用ロボット、食品機械,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）
+電源、能源與充電設備,電源装置、スイッチング電源、無停電電源、蓄電池、充電器、インバータ、太陽光発電,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）
+配電盤與電機控制,制御盤、分電盤、操作盤、動力盤、制御装置,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）
+測試、量測與分析儀器,計測器、測定器、検査装置、試験機、分析装置、計測機器,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）
+消防、廣播與音響設備,火災報知、放送設備、音響機器,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）
+智慧建築、保全與門禁,防犯設備、監視カメラ、入退室管理,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）
+交通、車用與軌道設備,鉄道車両、車載機器、信号機,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）
+空調、通風與家電控制,空調機器、送風機、換気扇、冷凍機、給湯器,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）
+醫療與牙科設備,医療機器、歯科,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）
+照明、LED與顯示設備,照明器具、表示器,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）
+通訊、RFID與物聯網,通信機器、無線機,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）
+電腦、伺服器與資訊設備,産業用コンピュータ、組込み機器,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）
+半導體、PCB與電子製造設備,半導体製造装置、実装機,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）
+電子連接器、線材與EMS,基板実装、受託製造、ワイヤーハーネス、ケーブル加工,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）
+馬達、變壓器與電力設備,モータ、変圧器、発電機,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）
+金屬、模具與塑膠零件製造,金型、プレス加工、切削加工、精密加工,ja,日本試跑後補的日文用語（非使用者原表，2026-10-26）

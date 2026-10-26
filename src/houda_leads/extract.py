@@ -10,6 +10,8 @@ from selectolax.lexbor import LexborHTMLParser as HTMLParser
 HIDDEN_STYLE = re.compile(r"display\s*:\s*none|visibility\s*:\s*hidden", re.I)
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 TW_PHONE = re.compile(r"(?<!\d)(?:\+886-?|0)\d{1,2}-\d{3,4}-\d{3,4}(?!\d)")
+# 全形英數字 → 半形（一個字換一個字，位置不變）。日本登記寫「ＮＯＫ静岡」，官網寫「NOK静岡」（日本試跑學到的）
+HALFWIDTH = str.maketrans({**{chr(c): chr(c - 0xFEE0) for c in range(0xFF01, 0xFF5F)}, "　": " "})
 COMPANY_SUFFIX = re.compile(r"(股份有限公司|有限公司|企業社|工業社|公司)$")
 JP_AFFIX = re.compile(r"^(株式会社|有限会社)|(株式会社|有限会社)$")
 EN_SUFFIX = re.compile(r"[\s,]*\b(co\.?,?\s*ltd|ltd|limited|inc|incorporated|corp|corporation|company|"
@@ -157,7 +159,8 @@ def _name_on_page(core: str, joined: str) -> bool:
 
 def site_confirmation(texts: list[PageText], tax_id: str, company_name: str, id_label: str = "統編") -> str:
     """失敗模式 4：官網上要看得到統編（國外是註冊編號），或完整公司名（去掉公司型態，至少 4 個字），才算確認。"""
-    joined = " ".join(t.text for t in texts)
+    joined = " ".join(t.text for t in texts).translate(HALFWIDTH)
+    company_name = company_name.translate(HALFWIDTH)
     # 英國公司編號 01234567 在網頁上常寫成 1234567：去掉開頭的 0 也算（剩下至少 5 碼）
     ids = [tax_id] + ([tax_id.lstrip("0")] if tax_id and len(tax_id.lstrip("0")) >= 5 else [])
     for i in filter(None, dict.fromkeys(ids)):

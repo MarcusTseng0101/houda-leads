@@ -119,3 +119,30 @@ def test_exhibition_names_are_only_mentions(cfg):
     c = classify.classify(t, inds, cfg)
     assert c.industry == "" and "自動化" in c.mentions
 
+
+
+def test_keywords_only_match_their_own_language(cfg):
+    inds = [Industry("保全", (Keyword("保全", False, False, "zh"),)),
+            Industry("空調", (Keyword("空調機器", False, True, "ja"), Keyword("hvac", True)))]
+    t = [extract.PageText("u", "環境保全に取り組みます。空調機器とHVACを製造しています。")]
+    c = classify.classify(t, inds, cfg, lang="ja")
+    assert c.industry == "空調" and "保全" not in c.all_hits          # 中文「保全」不比日文網站
+    c = classify.classify([extract.PageText("u", "專業保全系統。")], inds, cfg, lang="zh")
+    assert c.industry == "保全"
+
+
+def test_japanese_for_and_introduced_are_mentions(cfg):
+    inds = [Industry("半導體", (Keyword("半導体製造装置", False, True, "ja"),)),
+            Industry("測試", (Keyword("測定器", False, True, "ja"),))]
+    t = [extract.PageText("u", "半導体製造装置向けの部品を製造。精密測定器を導入しております。")]
+    c = classify.classify(t, inds, cfg, lang="ja")
+    assert c.industry == "" and set(c.mentions) == {"半導體", "測試"}
+
+
+def test_single_keyword_hit_is_not_a_lead(R, cfg):
+    html = "<html><body><p>範例電機股份有限公司 統一編號 12345678</p><p>本公司製造電源供應器。</p></body></html>"
+    one = {"meta": {"公司名稱": "範例電機股份有限公司", "統編": "12345678", "url": "https://x.example.tw/"},
+           "pages": [extract.Page("https://x.example.tw/", html)]}
+    r = cli.process(one, R, cfg, dt.date(2026, 10, 26))
+    assert r["標準化產業"] and r["命中關鍵字"] == "電源供應器"
+    assert r["分流"] == "需人工確認" and "證據太少" in r["備註"]

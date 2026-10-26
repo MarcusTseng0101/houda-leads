@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from .extract import SENTINEL, PageText
+from .extract import HALFWIDTH, SENTINEL, PageText
 from .rules import Industry, Keyword
 
 BOUNDARY = "。！？；!?;" + SENTINEL
@@ -44,7 +44,7 @@ def find(text_lower: str, kw: Keyword) -> int:
 
 def normalize(text: str, variants: dict[str, str]) -> str:
     """小寫＋異體字（例如 板金→鈑金）。只允許等長替換：位置不變，證據才能從原文取。"""
-    low = text.lower()
+    low = text.translate(HALFWIDTH).lower()      # 全形英數字當半形（ＬＥＤ＝LED），一個字換一個字
     for a, b in variants.items():
         assert len(a) == len(b), f"異體字要等長：{a}→{b}"
         low = low.replace(a.lower(), b.lower())
@@ -87,14 +87,16 @@ def evidence_at(text: str, pos: int, length: int, window: int) -> str:
     return text[start:end].strip()
 
 
-def classify(texts: list[PageText], industries: list[Industry], cfg: dict, hints: list[str] = ()) -> Classification:
+def classify(texts: list[PageText], industries: list[Industry], cfg: dict, hints: list[str] = (),
+             lang: str = "zh") -> Classification:
     """hints：登記的產業代碼指向的產業（registry_hints.csv）。只在命中多類、分不出來時拿來決定，
     而且那一類的命中數要至少是第一名的 hint_min_share、也至少 dominance_min_hits 個（避免登記代碼蓋過網站上
     明顯的證據，也避免只中 1 個字就硬判）；兩個有提示的產業平手時不判。"""
     c = cfg["classify"]
     window = int(c["evidence_window"])
     markers, lookback = c["application_markers"], int(c["application_lookback"])
-    after_markers, lookahead = c.get("application_after_markers", []), int(c.get("application_lookahead", 0))
+    after_markers, lookahead = list(c.get("application_after_markers", [])), int(c.get("application_lookahead", 0))
+    after_markers += c.get(f"application_after_markers_{lang}", [])
     variants = c.get("text_variants", {})
     found: dict[str, list[tuple[str, int, str, int]]] = {}   # 產業 → [(關鍵字, 頁序, 網址, 位置)]（做什麼）
     mentioned: dict[str, list[str]] = {}
@@ -102,6 +104,8 @@ def classify(texts: list[PageText], industries: list[Industry], cfg: dict, hints
         low = normalize(t.text, variants)
         for ind in industries:
             for kw in ind.keywords:
+                if not kw.ascii_word and kw.lang != lang:   # 中文的字不比日文網站，反之亦然
+                    continue
                 if any(h[0] == kw.text for h in found.get(ind.name, [])):
                     continue
                 ps = positions(low, kw)

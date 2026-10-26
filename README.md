@@ -29,6 +29,17 @@ uv run houda-leads run --list 國外名單.csv --out out/overseas --limit 20
 建議跟進會寫「交給該區代理」（歐洲 Comet、美國 BlockMaster、日本 ABA、中國逸特），避免和代理商搶客戶。
 `外聯規則` 是提醒，不是法律意見：德國、奧地利、韓國要先取得同意；寫「需確認」的寄之前問法務。
 
+## 英國、日本的政府資料
+
+```bash
+# 英國：Companies House 每月免費快照（官網用猜的，只找得到約 2 成）
+uv run houda-leads run --registry gb --source data/uk/BasicCompanyData-2026-10-01.zip --sample 20 --out out/uk
+# 日本：gBizINFO「基本情報」zip（要自己申請免費 token、自己下載；登記檔有官網）
+uv run houda-leads run --registry jp --source data/jp/Kihonjoho_UTF-8_20261026.zip --sample 20 --out out/jp
+```
+
+關鍵字分語言比：台灣用中文＋英文、日本用日文＋英文、其他國家只用英文（`inputs/keywords_extra.csv` 的「語言」欄）。
+
 ## 驗收（gold）
 
 成功的定義在 `PROMPT.md`：業務標 50 家，`bash scripts/check.sh --stage final` 結束碼 0 才算完成。

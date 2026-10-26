@@ -61,7 +61,8 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
             break
     codes = re.findall(r"(?:^|、)(\d{2,5})", meta.get("工廠主要產品", ""))
     hints = R.hinted_industries(country, codes)
-    cls = classify.classify(content, R.industries, cfg, hints)
+    langs = cfg["classify"].get("lang_by_country", {})
+    cls = classify.classify(content, R.industries, cfg, hints, langs.get(country, langs.get("default", "zh")))
     sig = channel.channel_signal(joined, cfg, R.competitor_brands)
     comp = channel.component_signal(" ".join(t.text for t in content), cfg)
     rec = match.recommend(cls.industry, R, cfg, sig, bool(comp)) if cls.industry else None
@@ -100,6 +101,11 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
         lane, follow = "通路與合作", "業務決定"
     elif review or not rec:
         lane, follow = "需人工確認", ""
+    elif len(cls.hits) < int(cfg["classify"].get("min_hits_for_lead", 1)):
+        # 只中 1 個關鍵字：證據太少（試跑：「Adobe Reader」中 reader、「包装機」是它包裝自己的衛生紙）
+        lane, follow = "需人工確認", ""
+        review = True
+        notes.append(f"只中 {len(cls.hits)} 個關鍵字，證據太少，請業務看一下")
     else:
         lane = "潛在客戶"
         p = _region_partners(R, region) if region else ""

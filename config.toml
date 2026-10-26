@@ -29,6 +29,8 @@ dominance_ratio = 2.0
 dominance_min_hits = 2
 # 命中多類時，登記產業代碼指向的那一類，命中數至少要是第一名的這個比例才採用（猜的，可調整）
 hint_min_share = 0.5
+# 列成潛在客戶至少要中幾個不同的關鍵字（台灣、英國、日本試跑：只中 1 個的 7 家裡 5 家錯、1 家對）（猜的，可調整）
+min_hits_for_lead = 2
 evidence_window = 40            # 證據前後各取幾個字（猜的，可調整）
 # 關鍵字前面（同一句、最多 application_lookback 個字）出現這些字 → 說的是客戶的產業，只算「提及」
 application_markers = ["應用", "適用", "用於", "客戶", "application", "applications", "applied", "used in", "for use",
@@ -37,6 +39,10 @@ application_markers = ["應用", "適用", "用於", "客戶", "application", "a
 # （台灣試跑：德淵的「Industrial Automation Exhibition」被算成做自動化設備）
 application_after_markers = ["展覽", "展會", "大展", "exhibition", "expo", "trade show", "trade fair"]
 application_lookahead = 30      # 猜的，可調整
+# 日文：「半導体製造装置向け部品」「測定器を導入」說的是客戶或自己買的設備（日本試跑學到的）
+application_after_markers_ja = ["向け", "を導入", "導入して", "用途"]
+# 網站用哪個語言的關鍵字比（英數字的字每個語言都比）
+lang_by_country = { TW = "zh", CN = "zh", HK = "zh", JP = "ja", default = "en" }
 application_lookback = 30       # 猜的，可調整
 # 異體字（只能等長）：網站用的字 → 關鍵字表用的字
 text_variants = { "板金" = "鈑金", "臺" = "台", "線束" = "線組" }
@@ -87,8 +93,14 @@ company_categories = ["Private Limited Company", "Public Limited Company"]
 exclude_account_categories = ["DORMANT", "NO ACCOUNTS FILED", "MICRO ENTITY"]
 
 [registries.jp]
-# gBizINFO 法人基本情報 CSV「事業種目」（日本標準産業分類）含這些字就留（欄位實際格式還沒用真檔確認）
-industry_words = ["電子部品", "電気機械", "情報通信機械", "生産用機械", "業務用機械", "はん用機械"]
+# gBizINFO 法人基本情報 CSV「事業種目」（日本標準産業分類）含這些字就留。
+# 2026-10-26 真檔：580 萬家裡有填事業種目的 15 萬家，幾乎都只寫大類（「E:製造業」），中類（29 電気機械）只有零星幾筆，
+# 所以用大類篩；食品、紡織也會進來，看官網對不到關鍵字就送人工
+industry_words = ["E:製造業"]
+# 組織種別：301 株式会社、302 有限会社、305 合同会社
+org_types = ["301", "302", "305"]
+# 只留登記檔有官網的（有官網的只有 4.5 萬家，猜網域對日文公司名沒用）
+require_website = true
 
 [discover]
 max_candidates = 6              # 每家最多猜幾個網址（猜的，可調整）
