@@ -4,7 +4,9 @@
   houda-leads run --source 工廠登記.csv --websites 統編官網.csv --out DIR --limit 20
   houda-leads run --registry gb --source BasicCompanyData.zip --out DIR --sample 20
   houda-leads run --list 國外名單.csv --out DIR   （公司名稱,國家,官網[,註冊編號,來源]）
-  houda-leads eval --gold FILE --json FILE （第 6 步才實作）
+  houda-leads eval --gold gold/labels.csv --json out/eval.json [--leads out/gold_run/leads.csv]
+  houda-leads label-sheet --leads out/gold_run/leads.csv --out gold/labels_待標.xlsx
+  houda-leads gold-csv --xlsx gold/labels_待標.xlsx --out gold/labels.csv
 """
 from __future__ import annotations
 
@@ -274,8 +276,37 @@ def cmd_run(a) -> int:
 
 
 def cmd_eval(a) -> int:
-    print("eval 第 6 步才實作（需要使用者提供 gold/labels.csv）", file=sys.stderr)
-    return 2
+    """PROMPT.md 唯一的成功定義。預測來自 --leads（預設 out/gold_run/leads.csv），證據用快取重新比對。"""
+    from . import evaluate
+    cfg = config.load()
+    R = rules.load(config.ROOT / "inputs", cfg)
+    gold = evaluate.load_gold(Path(a.gold))
+    leads, run = evaluate.load_run(Path(a.leads))
+    levels = {k: v.priority_level for k, v in R.products.items()}
+    res = evaluate.evaluate(gold, leads, run, levels, config.ROOT / "data" / "cache")
+    Path(a.json).parent.mkdir(parents=True, exist_ok=True)
+    Path(a.json).write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"產業判對 {res['industry_accuracy']}（{res['industry_scored']} 家有確認官網）；"
+          f"高優先命中 {res['high_priority_precision']}（{res['high_priority_n']} 家）；"
+          f"證據不在原文 {res['evidence_not_in_source']}；禁止網域請求 {res['denied_domain_requests']}")
+    return 0
+
+
+def cmd_label_sheet(a) -> int:
+    from . import evaluate
+    cfg = config.load()
+    R = rules.load(config.ROOT / "inputs", cfg)
+    leads, _ = evaluate.load_run(Path(a.leads))
+    n = evaluate.write_label_sheet(leads, R.industry_names(), Path(a.out))
+    print(f"寫入 {a.out}：{n} 家待標（沒有放工具的判斷）")
+    return 0
+
+
+def cmd_gold_csv(a) -> int:
+    from . import evaluate
+    n = evaluate.xlsx_to_gold_csv(Path(a.xlsx), Path(a.out))
+    print(f"寫入 {a.out}：{n} 家")
+    return 0
 
 
 def main(argv=None) -> int:
@@ -299,9 +330,17 @@ def main(argv=None) -> int:
     e = sub.add_parser("eval")
     e.add_argument("--gold", required=True)
     e.add_argument("--json", required=True)
+    e.add_argument("--leads", default=str(config.ROOT / "out" / "gold_run" / "leads.csv"),
+                   help="同一批公司跑出來的 leads.csv（預設 out/gold_run/leads.csv）")
+    ls = sub.add_parser("label-sheet", help="給業務標 gold 的空白表（不放工具的判斷）")
+    ls.add_argument("--leads", required=True)
+    ls.add_argument("--out", required=True)
+    gc = sub.add_parser("gold-csv", help="業務標好的 xlsx → gold/labels.csv")
+    gc.add_argument("--xlsx", required=True)
+    gc.add_argument("--out", default=str(config.ROOT / "gold" / "labels.csv"))
     a = p.parse_args(argv)
     try:
-        return cmd_run(a) if a.cmd == "run" else cmd_eval(a)
+        return {"run": cmd_run, "eval": cmd_eval, "label-sheet": cmd_label_sheet, "gold-csv": cmd_gold_csv}[a.cmd](a)
     except NotYet as ex:
         print(f"尚未實作：{ex}", file=sys.stderr)
         return 2
