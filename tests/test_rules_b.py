@@ -146,3 +146,20 @@ def test_single_keyword_hit_is_not_a_lead(R, cfg):
     r = cli.process(one, R, cfg, dt.date(2026, 10, 26))
     assert r["標準化產業"] and r["命中關鍵字"] == "電源供應器"
     assert r["分流"] == "需人工確認" and "證據太少" in r["備註"]
+
+
+def test_specific_hinted_industry_beats_generic_machinery(cfg):
+    """登記 292 同時提示「機械」和「半導體」：網站說得出是半導體設備，就不歸泛用的機械（2026-11-02）。"""
+    cfg = {**cfg, "classify": {**cfg["classify"], "generic_industries": ["機械"]}}
+    inds = [Industry("機械", tuple(Keyword(k, True) for k in ("automation", "machinery", "robot arm", "conveyor", "plc"))),
+            Industry("半導體", tuple(Keyword(k, True) for k in ("semiconductor", "wafer", "pcb", "smt")))]
+    t = [extract.PageText("u", "Automation machinery, robot arm, conveyor and PLC for semiconductor wafer, PCB and SMT lines.")]
+    assert classify.classify(t, inds, cfg, ["機械", "半導體"]).industry == "半導體"     # 5:4，原本會選機械
+    assert classify.classify(t, inds, cfg, ["機械"]).industry == "機械"                # 半導體沒提示：照舊
+    t = [extract.PageText("u", "Automation machinery, robot arm, conveyor and PLC. Also semiconductor.")]
+    c = classify.classify(t, inds, cfg, ["機械", "半導體"])
+    assert c.industry == "機械" and c.method == "關鍵字(多數)"                         # 5:1 機械明顯多：照舊
+
+
+def test_registry_292_hints_semiconductor_equipment(R):
+    assert "半導體、PCB與電子製造設備" in R.hinted_industries("TW", ["292"])

@@ -91,7 +91,8 @@ def classify(texts: list[PageText], industries: list[Industry], cfg: dict, hints
              lang: str = "zh") -> Classification:
     """hints：登記的產業代碼指向的產業（registry_hints.csv）。只在命中多類、分不出來時拿來決定，
     而且那一類的命中數要至少是第一名的 hint_min_share、也至少 dominance_min_hits 個（避免登記代碼蓋過網站上
-    明顯的證據，也避免只中 1 個字就硬判）；兩個有提示的產業平手時不判。"""
+    明顯的證據，也避免只中 1 個字就硬判）；兩個有提示的產業平手時不判。
+    有提示的產業裡同時有泛用類（generic_industries）和說得出用途的類別時，只看後者。"""
     c = cfg["classify"]
     window = int(c["evidence_window"])
     markers, lookback = c["application_markers"], int(c["application_lookback"])
@@ -137,6 +138,8 @@ def classify(texts: list[PageText], industries: list[Industry], cfg: dict, hints
         share = float(c.get("hint_min_share", 0.5))
         need = max(int(c["dominance_min_hits"]), share * len(top))   # 只中 1 個字的不算（試跑：1:1:1 平手被硬判）
         ok = [(n, h) for n, h in ranked if n in hints and len(h) >= need]
+        specific = [(n, h) for n, h in ok if n not in set(c.get("generic_industries", []))]
+        ok = specific or ok                                         # 說得出用途的優先於泛用的「機械設備」
         if len(ok) > 1 and len(ok[0][1]) == len(ok[1][1]):         # 兩個有提示的產業平手：還是分不出來
             ok = []
         if len(top) >= c["dominance_min_hits"] and len(top) >= c["dominance_ratio"] * second:
