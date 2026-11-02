@@ -107,6 +107,9 @@ def evaluate(gold: dict[str, dict], leads: list[dict], run: dict, priority_level
         "industry_accuracy": round(correct / n, 3) if n else 0.0,
         "industry_scored": n,
         "industry_coverage": round(predicted / n, 3) if n else 0.0,     # 有判（沒送人工）的比例
+        # 只算工具有判的（送人工的不算）：2026-11-02 起當參考，不擋（PROMPT.md 成功定義）
+        "industry_accuracy_judged": round(correct / predicted, 3) if predicted else 0.0,
+        "industry_judged_n": predicted,
         "high_priority_precision": round(hp, 3), "high_priority_n": hn,
         "lead_precision": round(lp, 3), "lead_n": ln,
         "evidence_not_in_source": bad, "evidence_unverifiable": unver, "evidence_examples": examples[:10],

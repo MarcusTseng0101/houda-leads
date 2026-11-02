@@ -54,9 +54,14 @@ if [ "$stage" = final ]; then
   [ -f out/eval.json ] && py - <<'EOF' || die "eval-threshold" "沒達到成功定義（PROMPT.md「唯一的成功定義」）"
 import json, sys
 e = json.load(open("out/eval.json", encoding="utf-8"))
-ok = e["industry_accuracy"] >= 0.80 and e["high_priority_precision"] >= 0.70 \
+# 2026-11-02 使用者同意改（PROMPT.md 成功定義）：以推薦名單的準確度為門檻，產業判對當參考
+ok = e["high_priority_precision"] >= 0.70 and e["lead_precision"] >= 0.70 \
      and e["evidence_not_in_source"] == 0 and e["denied_domain_requests"] == 0
-print(json.dumps(e, ensure_ascii=False, indent=1)); sys.exit(0 if ok else 1)
+print(json.dumps(e, ensure_ascii=False, indent=1))
+if e["industry_accuracy_judged"] < 0.60:
+    print(f"WARNING [industry]: 產業判對（只算工具有判的）{e['industry_accuracy_judged']} < 0.60，不擋，但分類還要改進",
+          file=sys.stderr)
+sys.exit(0 if ok else 1)
 EOF
 fi
 

@@ -92,3 +92,11 @@ def test_eval_cli_writes_json(tmp_path, monkeypatch):
     assert e["industry_accuracy"] == 1.0 and e["high_priority_precision"] == 1.0
     assert set(e) >= {"industry_accuracy", "high_priority_precision", "evidence_not_in_source",
                       "denied_domain_requests", "per_industry"}
+
+
+def test_industry_accuracy_counting_only_judged(tmp_path):
+    gold = {"1": {"industry": "電源", "yn": "Y"}, "2": {"industry": "照明", "yn": "Y"}, "3": {"industry": "照明", "yn": "N"}}
+    leads = [lead("1", "電源"), lead("2", "電源"), lead("3", "", lane="需人工確認")]
+    r = evaluate.evaluate(gold, leads, {}, LEVELS, tmp_path)
+    assert r["industry_accuracy"] == round(1 / 3, 3)                              # 送人工算錯
+    assert r["industry_accuracy_judged"] == 0.5 and r["industry_judged_n"] == 2   # 只算有判的
