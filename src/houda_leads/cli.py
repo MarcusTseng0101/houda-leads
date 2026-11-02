@@ -78,8 +78,9 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
     if confirm == "未確認":
         review = True
         notes.append("官網上找不到統編（註冊編號）或完整公司名")
+    # 2026-11-02 使用者決定：「依規格另行選型」說的是怎麼挑型號，不是不是客戶（這類產業表寫優先度「高」）。
+    # 照樣列潛在客戶，不推型號，只在備註提醒先問規格
     if rec and rec.rule.spec_required and rec.role == match.ROLE_MAKER:   # 通路、EMS 本來就不直接推型號
-        review = True
         notes.append("產業表寫「依規格另行選型」：先問對方規格，再從目錄挑")
     if self_ev:
         review = True

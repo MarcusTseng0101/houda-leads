@@ -24,7 +24,7 @@ def site(name, tax, body, url="https://co.example.tw/"):
     ("90000001", "潛在客戶"),
     ("90000002", "潛在代理商"),     # 經銷＋競品品牌
     ("90000003", "通路與合作"),     # EMS
-    ("90000004", "需人工確認"),     # 半導體：依規格另行選型
+    ("90000004", "潛在客戶"),       # 半導體：依規格另行選型，照樣列（2026-11-02 使用者決定，原本是需人工確認）
     ("90000005", "需人工確認"),     # 網站提到自家公司
     ("90000006", "需人工確認"),     # 官網未確認
 ])
@@ -53,6 +53,7 @@ def test_self_mention_has_evidence(demo):
 def test_spec_required_has_no_models(demo):
     r = demo["90000004"]
     assert r["推薦產品系列"] == "" and r["同規格替代(供參考)"] == ""
+    assert "先問對方規格" in r["備註"] and r["需人工確認(Y/N)"] == "N"
 
 
 def test_public_customer_is_routed_out(R, cfg):
