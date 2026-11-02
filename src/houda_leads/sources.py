@@ -98,6 +98,41 @@ def load_factory_registry(path: Path, cfg: dict) -> list[Candidate]:
     return list(by.values())
 
 
+# 出進口廠商登記（data.gov.tw 資料集 79641，國際貿易署，每天更新）：只讀統編、英文名稱、電話。
+# 「代表人」是個資，這裡完全不讀（失敗模式 7）。英文名用來猜網域，電話當第二個證據（2026-11-02）
+TRADE_COLS = {"tax_id": "統一編號", "name_en": "廠商英文名稱", "phone": "電話號碼"}
+
+
+@dataclass(frozen=True)
+class TradeInfo:
+    name_en: str
+    phone_digits: str          # 去掉分機、符號、國碼、開頭的 0：04-8681868#8603 → 48681868
+
+
+def phone_digits(phone: str) -> str:
+    d = re.sub(r"\D", "", re.split(r"[#*xX轉]|ext", phone or "", maxsplit=1)[0])
+    if d.startswith("886"):
+        d = d[3:]
+    d = d.lstrip("0")
+    return d if len(d) >= 7 else ""
+
+
+def load_trade_registry(path: Path, tax_ids: set[str] | None = None) -> dict[str, TradeInfo]:
+    out = {}
+    with Path(path).open(encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        missing = [c for c in TRADE_COLS.values() if c not in (reader.fieldnames or [])]
+        if missing:
+            raise ValueError(f"出進口廠商登記檔缺欄位 {missing}：格式可能改了")
+        for r in reader:
+            tax = (r.get(TRADE_COLS["tax_id"]) or "").strip()
+            if not tax or (tax_ids is not None and tax not in tax_ids):
+                continue
+            out[tax] = TradeInfo((r.get(TRADE_COLS["name_en"]) or "").strip(),
+                                 phone_digits(r.get(TRADE_COLS["phone"]) or ""))
+    return out
+
+
 LIST_COLS = {"name": "公司名稱", "country": "國家", "website": "官網"}
 LIST_OPTIONAL = {"reg_id": "註冊編號", "source": "來源"}
 

@@ -28,6 +28,10 @@ class RobotsDisallowed(Exception):
     pass
 
 
+class SiteUnreachable(RobotsDisallowed):
+    """連 robots.txt 都連不上（網域不存在、憑證錯、逾時）：照樣不抓，但找官網時可以換 http 再試（2026-11-02）。"""
+
+
 def host_of(url: str) -> str:
     return (urlsplit(url).hostname or "").lower()
 
@@ -96,6 +100,7 @@ class Fetcher:
                     rp.parse(r.text.splitlines())
             except httpx.HTTPError:
                 rp.disallow_all = True
+                rp.unreachable = True
             self._robots[base] = rp
         return rp
 
@@ -111,8 +116,9 @@ class Fetcher:
         cp = self._cache_path(url)
         if cp and cp.exists():
             return cp.read_text(encoding="utf-8")
-        if not self._robots_for(url).can_fetch(self.ua, url):
-            raise RobotsDisallowed(url)
+        rp = self._robots_for(url)
+        if not rp.can_fetch(self.ua, url):
+            raise (SiteUnreachable if getattr(rp, "unreachable", False) else RobotsDisallowed)(url)
         r = self._raw_get(url)
         r.raise_for_status()
         text = r.text

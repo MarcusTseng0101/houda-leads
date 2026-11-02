@@ -123,3 +123,96 @@ def test_second_proof_on_contact_page(cfg):
     f = FakeFetcher({"https://www.acmecontrols.co.uk/": home, "https://www.acmecontrols.co.uk/contact-us": contact})
     url, _, log = discover.discover(f, ["ACME CONTROLS LIMITED"], "01234567", "GB", cfg, ["LS1 1AA"])
     assert url == "https://www.acmecontrols.co.uk/" and "LS1 1AA" in log[-1]
+
+
+
+# ── 台灣：出進口廠商登記的英文名猜網域（2026-11-02，使用者：不再請業務標，先讓工具自己找官網）──
+
+TRADE_HDR = ["統一編號", "原始登記日期", "核發日期", "廠商中文名稱", "廠商英文名稱", "中文營業地址", "英文營業地址",
+             "代表人", "電話號碼", "傳真號碼", "進口資格", "出口資格"]
+
+
+def test_trade_registry_reads_name_and_phone_never_representative(tmp_path):
+    p = tmp_path / "trade.csv"
+    with p.open("w", encoding="utf-8-sig", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(TRADE_HDR)
+        w.writerow(["12345678", "", "", "範例機械股份有限公司", "CHI HUA MACHINERY CO., LTD.", "", "", "王O明",
+                    "04-8681868#8603", "", "有", "有"])
+        w.writerow(["87654321", "", "", "別家", "OTHER CO., LTD.", "", "", "", "", "", "有", "有"])
+    t = sources.load_trade_registry(p, {"12345678"})
+    assert list(t) == ["12345678"]
+    assert t["12345678"] == sources.TradeInfo("CHI HUA MACHINERY CO., LTD.", "48681868")
+    assert "王" not in repr(t)
+
+
+def test_phone_digits():
+    assert sources.phone_digits("(02)2397-7505") == "223977505"
+    assert sources.phone_digits("+886-2-2397-7505") == "223977505"
+    assert sources.phone_digits("04-8681868#8603") == "48681868"
+    assert sources.phone_digits("123") == ""
+
+
+def test_tw_brand_slug_first(cfg):
+    drop = cfg["discover"]["drop_words"]["TW"]
+    assert discover.slugs("CHI HUA MACHINERY CO., LTD.", drop)[:2] == ["chihua", "chi-hua"]
+    assert discover.slugs("ACME CONTROLS LIMITED") == ["acmecontrols", "acme-controls"]     # 英國不變
+    urls = discover.candidate_urls("CHI HUA MACHINERY CO., LTD.", "TW", cfg)
+    assert urls[0] == "https://www.chihua.com.tw/" and "https://www.chi-hua.com.tw/" in urls
+    assert len(urls) <= cfg["discover"]["max_candidates_by_country"]["TW"]
+
+
+def test_tw_name_plus_registered_phone_confirms(cfg):
+    home = '<html><body><p>祺華機械股份有限公司</p><a href="/about">關於我們</a></body></html>'
+    about = "<html><body><p>祺華機械股份有限公司 TEL: +886-4-868-1868</p></body></html>"
+    f = FakeFetcher({"https://www.chihua.com.tw/": home, "https://www.chihua.com.tw/about": about})
+    url, _, log = discover.discover(f, ["CHI HUA MACHINERY CO., LTD.", "祺華機械股份有限公司"], "12345678", "TW", cfg,
+                                    ["tel:48681868"])
+    assert url == "https://www.chihua.com.tw/" and "電話" in log[-1]
+
+
+def test_tw_name_without_matching_phone_is_rejected(cfg):
+    home = "<html><body><p>祺華機械股份有限公司 TEL: 02-1234-5678</p></body></html>"
+    f = FakeFetcher({"https://www.chihua.com.tw/": home})
+    url, _, _ = discover.discover(f, ["CHI HUA MACHINERY CO., LTD.", "祺華機械股份有限公司"], "12345678", "TW", cfg,
+                                  ["tel:48681868"])
+    assert url == ""
+
+
+def test_tw_http_fallback_but_not_after_robots(cfg):
+    page = "<html><body><p>統一編號 12345678</p></body></html>"
+    f = FakeFetcher({"http://www.chihua.com.tw/": page})
+    url, _, _ = discover.discover(f, ["CHI HUA MACHINERY CO., LTD."], "12345678", "TW", cfg)
+    assert url == "http://www.chihua.com.tw/"
+    f = FakeFetcher({"https://www.chihua.com.tw/": RobotsDisallowed("x"), "http://www.chihua.com.tw/": page})
+    url, _, _ = discover.discover(f, ["CHI HUA MACHINERY CO., LTD."], "12345678", "TW", cfg)
+    assert "http://www.chihua.com.tw/" not in f.asked                                  # robots 禁止：不換 http 硬抓
+    f = FakeFetcher({"http://www.acmecontrols.co.uk/": page})
+    assert discover.discover(f, ["ACME CONTROLS LIMITED"], "12345678", "GB", cfg)[0] == ""   # 英國不退回 http
+
+
+
+def test_tw_http_fallback_after_unreachable(cfg):
+    from houda_leads.fetch import SiteUnreachable
+    page = "<html><body><p>統一編號 12345678</p></body></html>"
+    f = FakeFetcher({"https://www.chihua.com.tw/": SiteUnreachable("x"), "http://www.chihua.com.tw/": page})
+    assert discover.discover(f, ["CHI HUA MACHINERY CO., LTD."], "12345678", "TW", cfg)[0] == "http://www.chihua.com.tw/"
+
+
+def test_name_and_phone_both_on_about_page(cfg):
+    """一中工業：首頁只有產品，公司名和電話都在「關於我們」。要的證據一樣，只是多看幾頁。"""
+    home = '<html><body><p>Autoclaves and hot air ovens.</p><a href="/about-us">About us</a></body></html>'
+    about = "<html><body><p>E-Chung Machinery Co., Ltd. Tel: 04-2358-1234</p></body></html>"
+    f = FakeFetcher({"https://www.echung.com.tw/": home, "https://www.echung.com.tw/about-us": about})
+    url, _, log = discover.discover(f, ["E-CHUNG MACHINERY COMPANY", "一中工業股份有限公司"], "12345678", "TW", cfg,
+                                    ["tel:423581234"])
+    assert url == "https://www.echung.com.tw/" and "電話" in log[-1]
+
+
+def test_parked_domain_with_contact_link_still_rejected(cfg):
+    home = '<html><body><p>This domain is for sale.</p><a href="/contact">Contact</a></body></html>'
+    contact = "<html><body><p>Call 04-2358-1234 to buy this domain.</p></body></html>"   # 電話對得上，但沒有公司名
+    f = FakeFetcher({"https://www.echung.com.tw/": home, "https://www.echung.com.tw/contact": contact})
+    url, _, _ = discover.discover(f, ["E-CHUNG MACHINERY COMPANY", "一中工業股份有限公司"], "12345678", "TW", cfg,
+                                  ["tel:423581234"])
+    assert url == ""

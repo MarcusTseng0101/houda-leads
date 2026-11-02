@@ -118,3 +118,23 @@ def test_cache_hit_skips_network(cfg, tmp_path):
     f2, calls2, _ = make(cfg, ok, tmp_path=tmp_path)
     assert f2.get("https://example.tw/a") == "<p>/a</p>"
     assert calls2 == [] and n == 2
+
+
+
+def test_unreachable_robots_is_still_not_fetched_but_marked(cfg):
+    """robots.txt 連不上：照樣不抓（還是 RobotsDisallowed），但標成 SiteUnreachable，找官網時才能換 http（2026-11-02）。"""
+    def h(req):
+        raise httpx.ConnectError("no such host", request=req)
+
+    f, calls, _ = make(cfg, h)
+    with pytest.raises(fetch.SiteUnreachable):
+        f.get("https://example.tw/a")
+    assert calls == ["https://example.tw/robots.txt"]
+    assert issubclass(fetch.SiteUnreachable, fetch.RobotsDisallowed)
+
+
+def test_robots_disallow_is_not_unreachable(cfg):
+    f, _, _ = make(cfg, ok)
+    with pytest.raises(fetch.RobotsDisallowed) as e:
+        f.get("https://example.tw/private/page")
+    assert type(e.value) is fetch.RobotsDisallowed

@@ -154,10 +154,51 @@ def load_websites(path: Path) -> dict[str, str]:
         return {r["統編"].strip(): (r.get("官網") or "").strip() for r in csv.DictReader(f) if r.get("統編", "").strip()}
 
 
+def source_discover_sites(a, cfg, stats: dict):
+    """台灣工廠登記＋出進口廠商登記（--trade）：用英文名猜網域，網站上看得到統編、或公司名＋登記電話才採用。"""
+    from . import crawl, discover, fetch, sources
+    cands = sources.load_factory_registry(Path(a.source), cfg)
+    stats["初篩後候選公司"] = len(cands)
+    if a.only:
+        with Path(a.only).open(encoding="utf-8-sig", newline="") as f:
+            want = [r["統編"].strip() for r in csv.DictReader(f) if r.get("統編", "").strip()]
+        by = {c.tax_id: c for c in cands}
+        cands = [by[t] for t in want if t in by]
+    elif a.sample:
+        import random
+        cands = random.Random(a.seed).sample(cands, min(a.sample, len(cands)))
+    cands = cands[: a.limit or None]
+    trade = sources.load_trade_registry(Path(a.trade), {c.tax_id for c in cands})
+    fetcher = fetch.Fetcher(cfg, cache_dir=config.ROOT / "data" / "cache")
+    for c in cands:
+        t0 = time.monotonic()
+        t = trade.get(c.tax_id)
+        if t and t.name_en:
+            proof = [f"tel:{t.phone_digits}"] if t.phone_digits else []
+            url, _home, problems = discover.discover(fetcher, [t.name_en, c.name], c.tax_id, "TW", cfg, proof)
+        else:
+            url, problems = "", ["出進口廠商登記查不到英文名稱，猜不出網域"]
+        pages, more = crawl.crawl_site(fetcher, url, cfg) if url else ([], ["沒有找到官網"])
+        problems += more
+        how = "猜網域" if url else ("沒找到" if t and t.name_en else "沒有英文名")
+        stats.setdefault("官網從哪來", {}).setdefault(how, 0)
+        stats["官網從哪來"][how] += 1
+        stats.setdefault("每家秒數", []).append(round(time.monotonic() - t0, 1))
+        stats.setdefault("每家頁數", []).append(len(pages))
+        meta = {"公司名稱": c.name, "統編": c.tax_id, "url": url, "別名": [t.name_en] if t and t.name_en else [],
+                "工廠主要產品": "、".join(c.products)}
+        yield {"meta": meta, "pages": pages, "problems": problems}
+    stats["請求數"] = fetcher.requests
+    stats["對禁止網域的請求"] = fetcher.denied_requests
+
+
 def source_sites(a, cfg, stats: dict):
     from . import crawl, fetch, sources
     if not a.websites:
-        raise NotYet("自動找官網（discover.py）還沒做：先用 --websites 給一份「統編,官網」對照表")
+        if a.trade:
+            yield from source_discover_sites(a, cfg, stats)
+            return
+        raise NotYet("沒有官網對照表：給 --websites「統編,官網」，或給 --trade 出進口廠商登記檔讓工具自己猜網域")
     cands = {c.tax_id: c for c in sources.load_factory_registry(Path(a.source), cfg)}
     stats["初篩後候選公司"] = len(cands)
     web = load_websites(Path(a.websites))
@@ -243,7 +284,7 @@ def cmd_run(a) -> int:
         src = f"registry:{a.registry} source:{a.source}"
     elif a.source:
         sites = source_sites(a, cfg, stats)
-        src = f"source:{a.source} websites:{a.websites}"
+        src = f"source:{a.source} websites:{a.websites}" if a.websites else f"source:{a.source} trade:{a.trade}"
     elif a.fixtures:
         sites = load_fixture_sites(Path(a.fixtures))[: a.limit or None]
         src = f"fixtures:{a.fixtures}"
@@ -325,7 +366,9 @@ def main(argv=None) -> int:
     r = sub.add_parser("run")
     r.add_argument("--fixtures")
     r.add_argument("--source", help="工廠登記 CSV（data.gov.tw 資料集 6569）")
-    r.add_argument("--websites", help="「統編,官網」對照表；自動找官網做好之前必填")
+    r.add_argument("--websites", help="「統編,官網」對照表（人工找的）；沒給就要給 --trade")
+    r.add_argument("--trade", help="出進口廠商登記 CSV（data.gov.tw 資料集 79641）：用英文名猜官網網域")
+    r.add_argument("--only", help="只跑這份 CSV 的「統編」欄列出的公司（量測用）")
     r.add_argument("--registry", choices=["tw", "gb", "jp"], default="tw",
                    help="--source 是哪一種登記檔：tw 工廠登記、gb Companies House 快照、jp gBizINFO 基本情報")
     r.add_argument("--sample", type=int, help="試跑：從初篩名單隨機抽 N 家（固定種子）")

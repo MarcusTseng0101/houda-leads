@@ -107,8 +107,13 @@ require_website = true
 
 [discover]
 max_candidates = 6              # 每家最多猜幾個網址（猜的，可調整）
+max_candidates_by_country = { TW = 8 }   # 台灣多試品牌字（猜的，可調整）
+# 只留品牌字：英文名結尾的這些通用字去掉（CHI HUA MACHINERY → chi-hua）（2026-11-02，看人工找到的官網）
+drop_words = { TW = ["technology", "technologies", "tech", "industrial", "industry", "industries", "electronic", "electronics", "electric", "electrical", "enterprise", "enterprises", "international", "precision", "machinery", "machine", "engineering", "group", "taiwan", "trading", "manufacturing", "mfg", "development", "science", "scientific", "materials", "material", "plastic", "plastics", "metal", "optoelectronics", "optical", "automation", "instrument", "instruments", "systems", "system"] }
+http_fallback = ["TW"]          # https 連不上再試 http（台灣小公司官網常沒有憑證）
 proof_pages = 3                 # 首頁只看到公司名時，再看幾頁找註冊編號／郵遞區號（猜的，可調整）
 [discover.tlds]
 GB = [".co.uk", ".com", ".uk"]
 JP = [".co.jp", ".jp", ".com"]
+TW = [".com.tw", ".com", ".tw"]
 default = [".com"]
