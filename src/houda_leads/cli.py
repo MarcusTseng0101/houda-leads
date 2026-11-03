@@ -406,6 +406,24 @@ def cmd_run(a) -> int:
     return 0
 
 
+def cmd_merge(a) -> int:
+    """好幾國的 run 結果合成一份全球 Excel（out/global_leads.xlsx）。"""
+    cfg = config.load()
+    runs = []
+    for d in a.runs:
+        d = Path(d)
+        with (d / "leads.csv").open(encoding="utf-8-sig", newline="") as f:
+            rows = list(csv.DictReader(f))
+        run = json.loads((d / "run.json").read_text(encoding="utf-8")) if (d / "run.json").exists() else {}
+        country = next((r["國家"] for r in rows if r.get("國家")), d.name)
+        runs.append((country, rows, run))
+    summary = export.write_global(runs, Path(a.out), cfg)
+    for k, v in summary.items():
+        print(k, v)
+    print(f"寫入 {a.out}/global_leads.xlsx")
+    return 0
+
+
 def cmd_eval(a) -> int:
     """PROMPT.md 唯一的成功定義。預測來自 --leads（預設 out/gold_run/leads.csv），證據用快取重新比對。"""
     from . import evaluate
@@ -473,10 +491,13 @@ def main(argv=None) -> int:
     ls.add_argument("--out", required=True)
     gc = sub.add_parser("gold-csv", help="業務標好的 xlsx → gold/labels.csv")
     gc.add_argument("--xlsx", required=True)
+    mg = sub.add_parser("merge", help="好幾國的結果合成一份全球 Excel")
+    mg.add_argument("--runs", nargs="+", required=True, help="各國 run 的 --out 資料夾")
+    mg.add_argument("--out", required=True)
     gc.add_argument("--out", default=str(config.ROOT / "gold" / "labels.csv"))
     a = p.parse_args(argv)
     try:
-        return {"run": cmd_run, "eval": cmd_eval, "label-sheet": cmd_label_sheet, "gold-csv": cmd_gold_csv}[a.cmd](a)
+        return {"run": cmd_run, "eval": cmd_eval, "label-sheet": cmd_label_sheet, "gold-csv": cmd_gold_csv, "merge": cmd_merge}[a.cmd](a)
     except NotYet as ex:
         print(f"尚未實作：{ex}", file=sys.stderr)
         return 2

@@ -65,3 +65,55 @@ def write(rows: list[dict], out: Path, cfg: dict, run_log: dict) -> None:
     for k, v in run_log.items():
         log.append([k, str(v)])
     wb.save(out / "leads.xlsx")
+
+
+ACTION_LANES = ["潛在客戶", "潛在代理商", "通路與合作"]   # 業務可以直接跟進的
+
+
+def _sheet(wb, name: str, cols: list[str], rows: list[dict]):
+    ws = wb.create_sheet(name[:31])
+    ws.append(cols)
+    for c in ws[1]:
+        c.font = Font(bold=True)
+    for r in rows:
+        ws.append([None] * len(cols))
+        for j, c in enumerate(cols, start=1):
+            cell = ws.cell(ws.max_row, j)
+            cell.value = "" if r.get(c) is None else str(r.get(c))
+            cell.data_type = "s"               # 一律當文字：不讓 "=..." 變成公式
+    ws.freeze_panes = "C2"
+    ws.auto_filter.ref = ws.dimensions
+
+
+def _priority(r: dict, key: str) -> tuple:
+    v = str(r.get(key) or "")
+    return (ACTION_LANES.index(r.get("分流")) if r.get("分流") in ACTION_LANES else 9,
+            int(v) if v.isdigit() else 99)
+
+
+def write_global(runs: list[tuple[str, list[dict], dict]], out: Path, cfg: dict) -> dict:
+    """好幾個國家的結果合成一份：總覽、每國一頁（可以直接跟進的）、需人工確認一頁。
+    runs：(國家, 那次的 leads.csv 列, 那次的 run.json)。"""
+    out.mkdir(parents=True, exist_ok=True)
+    cols = columns(cfg)
+    key = cfg["columns"]["products_priority_order"]
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "總覽"
+    head = ["國家", "公司數", "找到官網", "官網比例"] + SHEETS + ["每家秒數", "名單來源"]
+    ws.append(head)
+    for c in ws[1]:
+        c.font = Font(bold=True)
+    summary, manual = {}, []
+    for country, rows, run in runs:
+        n, web = len(rows), sum(1 for r in rows if r.get("官網"))
+        lanes = {s: sum(r.get("分流") == s for r in rows) for s in SHEETS}
+        summary[country] = {"公司數": n, "找到官網": web, **lanes}
+        ws.append([country, n, web, f"{web / n:.0%}" if n else "", *lanes.values(),
+                   str(run.get("平均每家秒數", "")), str(run.get("來源", ""))])
+        act = sorted((r for r in rows if r.get("分流") in ACTION_LANES), key=lambda r: _priority(r, key))
+        _sheet(wb, f"{country} 可跟進", cols, act)
+        manual += [r for r in rows if r.get("分流") == "需人工確認"]
+    _sheet(wb, "需人工確認（全部）", cols, manual)
+    wb.save(out / "global_leads.xlsx")
+    return summary

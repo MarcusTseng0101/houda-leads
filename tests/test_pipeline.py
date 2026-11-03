@@ -91,3 +91,18 @@ def test_normal_run_removes_checkpoint(tmp_path):
     out = tmp_path / "o"
     assert cli.main(["run", "--fixtures", "tests/fixtures/sites", "--out", str(out), "--no-llm"]) == 0
     assert (out / "leads.xlsx").exists() and not (out / "progress.jsonl").exists()
+
+
+
+def test_merge_makes_one_sheet_per_country(tmp_path):
+    from openpyxl import load_workbook
+    runs = []
+    for c in ("TW", "GB"):
+        d = tmp_path / c
+        assert cli.main(["run", "--fixtures", "tests/fixtures/sites", "--out", str(d), "--no-llm"]) == 0
+        runs.append(str(d))
+    out = tmp_path / "g"
+    assert cli.main(["merge", "--runs", *runs, "--out", str(out)]) == 0
+    wb = load_workbook(out / "global_leads.xlsx")
+    assert wb.sheetnames[0] == "總覽" and "需人工確認（全部）" in wb.sheetnames
+    assert any(n.endswith("可跟進") for n in wb.sheetnames)
