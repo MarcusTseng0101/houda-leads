@@ -76,3 +76,18 @@ def test_cli_run_writes_all_sheets(tmp_path):
 
 def test_source_mode_needs_websites_until_discover_exists(tmp_path):
     assert cli.main(["run", "--source", "x.csv", "--out", str(tmp_path)]) == 2
+
+
+
+def test_resume_refuses_to_overwrite_partial_run(tmp_path):
+    out = tmp_path / "o"
+    out.mkdir()
+    (out / "progress.jsonl").write_text("{}", encoding="utf-8")
+    assert cli.main(["run", "--fixtures", "tests/fixtures/sites", "--out", str(out), "--no-llm"]) == 2
+    assert (out / "progress.jsonl").exists()
+
+
+def test_normal_run_removes_checkpoint(tmp_path):
+    out = tmp_path / "o"
+    assert cli.main(["run", "--fixtures", "tests/fixtures/sites", "--out", str(out), "--no-llm"]) == 0
+    assert (out / "leads.xlsx").exists() and not (out / "progress.jsonl").exists()

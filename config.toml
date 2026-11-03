@@ -42,6 +42,9 @@ application_markers = ["應用", "適用", "用於", "客戶", "application", "a
 # （台灣試跑：德淵的「Industrial Automation Exhibition」被算成做自動化設備）
 application_after_markers = ["展覽", "展會", "大展", "exhibition", "expo", "trade show", "trade fair"]
 application_lookahead = 30      # 猜的，可調整
+# 中文：「引進 CNC」「增設機械手臂自動化生產線」說的是自己工廠用的設備，不是做這種設備（台灣 500 家試跑：代工廠被當成自動化設備商）
+# 不放「使用」「採用」：設備商介紹自己的機器也這樣寫（本機採用 PLC 控制）（2026-11-03）
+application_markers_zh = ["引進", "導入", "購置", "添購", "增設", "配置", "擁有", "投資"]
 # 日文：「半導体製造装置向け部品」「測定器を導入」說的是客戶或自己買的設備（日本試跑學到的）
 application_after_markers_ja = ["向け", "を導入", "導入して", "用途"]
 # 網站用哪個語言的關鍵字比（英數字的字每個語言都比）
@@ -54,6 +57,12 @@ text_variants = { "板金" = "鈑金", "臺" = "台", "線束" = "線組" }
 # 元件／材料供應商：出現至少 min_hits 個不同的字 → 不當設備製造商（產業表：「IC或記憶體元件公司不一定直接使用端子台」）
 signal_words = ["二極體", "二極管", "電晶體", "MOSFET", "IGBT", "肖特基", "閘流體", "晶閘管", "整流器件",
                 "被動元件", "電阻器", "電容器", "晶圓代工", "IC設計", "diode", "transistor", "thyristor"]
+min_hits = 2                    # 猜的，可調整
+
+[subcontract]
+# 加工代工廠：出現至少 min_hits 個不同的字 → 不直接列潛在客戶，送人工確認（2026-11-03 台灣 500 家試跑）
+signal_words = ["代工", "精密加工", "加工廠", "委託加工", "受託加工", "加工服務", "車銑加工", "CNC加工", "CNC 加工",
+                "machining service", "machining services", "contract manufacturing", "subcontract"]
 min_hits = 2                    # 猜的，可調整
 
 [self]

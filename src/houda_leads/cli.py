@@ -65,6 +65,7 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
     cls = classify.classify(content, R.industries, cfg, hints, langs.get(country, langs.get("default", "zh")))
     sig = channel.channel_signal(joined, cfg, R.competitor_brands)
     comp = channel.component_signal(" ".join(t.text for t in content), cfg)
+    sub = channel.subcontract_signal(" ".join(t.text for t in content), cfg)
     rec = match.recommend(cls.industry, R, cfg, sig, bool(comp)) if cls.industry else None
     cust = channel.match_entry(name, R.customers)
     partner = channel.match_entry(name, R.channel_partners)
@@ -87,6 +88,9 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
         notes.append("對方網站提到自家公司：可能是既有客戶或在賣我們產品的通路，聯絡前先確認")
 
     role = rec.role if rec else (match.ROLE_COMPONENT if comp else "")
+    if sub and role == match.ROLE_MAKER:
+        review = True
+        notes.append("看起來是加工代工廠（" + "、".join(sub) + "）：網站上的 CNC／自動化可能是自己工廠的設備，不是產品，請業務確認")
     if comp:
         notes.append("看起來是元件／材料供應商（" + "、".join(comp) + "）：產業表提醒這類公司不一定直接用我們的產品")
     if partner:
@@ -168,6 +172,9 @@ def source_discover_sites(a, cfg, stats: dict):
         import random
         cands = random.Random(a.seed).sample(cands, min(a.sample, len(cands)))
     cands = cands[: a.limit or None]
+    done = getattr(a, "done", set())
+    stats["本次要跑"] = sum(c.tax_id not in done for c in cands)
+    cands = [c for c in cands if c.tax_id not in done]
     trade = sources.load_trade_registry(Path(a.trade), {c.tax_id for c in cands})
     fetcher = fetch.Fetcher(cfg, cache_dir=config.ROOT / "data" / "cache")
     if a.search:
@@ -324,13 +331,34 @@ def cmd_run(a) -> int:
     today = dt.date.today()
     t0 = time.monotonic()
     rows = []
-    for s in sites:
-        row = process(s, R, cfg, today)
-        if s.get("problems"):
-            row["備註"] = "；".join([row["備註"]] + s["problems"]).strip("；")
-            if not s["pages"]:
-                row["分流"], row["需人工確認(Y/N)"] = "需人工確認", "Y"
-        rows.append(row)
+    # 每跑完一家就寫一行到 progress.jsonl：全量要好幾天，中斷後加 --resume 從這裡接著跑（2026-11-03）
+    ckpt = Path(a.out) / "progress.jsonl"
+    if ckpt.exists() and not a.resume:
+        print(f"{ckpt} 已經有上次跑到一半的結果：加 --resume 接著跑，或換一個 --out", file=sys.stderr)
+        return 2
+    if a.resume and ckpt.exists():
+        rows = [json.loads(l) for l in ckpt.read_text(encoding="utf-8").splitlines() if l.strip()]
+        a.done = {r["統編"] for r in rows}
+        print(f"[接著跑] 已有 {len(rows)} 家", file=sys.stderr)
+    ckpt.parent.mkdir(parents=True, exist_ok=True)
+    every = int(cfg.get("run", {}).get("progress_every", 25))
+    with ckpt.open("a", encoding="utf-8") as cf:
+        for s in sites:
+            row = process(s, R, cfg, today)
+            if s.get("problems"):
+                row["備註"] = "；".join([row["備註"]] + s["problems"]).strip("；")
+                if not s["pages"]:
+                    row["分流"], row["需人工確認(Y/N)"] = "需人工確認", "Y"
+            rows.append(row)
+            cf.write(json.dumps(row, ensure_ascii=False, default=str) + "\n")
+            cf.flush()
+            n = len(stats.get("每家秒數") or [])
+            if every and n and n % every == 0:
+                avg = sum(stats["每家秒數"]) / n
+                left = (stats.get("本次要跑") or n) - n
+                found = sum(1 for r in rows if r.get("官網"))
+                print(f"[進度] 這次跑完 {n} 家（共 {len(rows)} 家），有官網 {found}，平均每家 {avg:.1f} 秒，"
+                      f"預估還要 {left * avg / 3600:.1f} 小時", file=sys.stderr, flush=True)
     secs = stats.get("每家秒數") or []
     if secs:
         avg = sum(secs) / len(secs)
@@ -348,6 +376,7 @@ def cmd_run(a) -> int:
         "分流統計": json.dumps({s: sum(r["分流"] == s for r in rows) for s in export.SHEETS}, ensure_ascii=False),
     }
     export.write(rows, Path(a.out), cfg, run_log)
+    ckpt.unlink()                   # 正常跑完：Excel 已經寫好，接著跑用的暫存檔不需要了
     (Path(a.out) / "run.json").write_text(json.dumps(run_log, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"寫入 {a.out}/leads.xlsx、leads.csv：{len(rows)} 家")
     return 0
@@ -399,6 +428,7 @@ def main(argv=None) -> int:
     r.add_argument("--websites", help="「統編,官網」對照表（人工找的）；沒給就要給 --trade")
     r.add_argument("--trade", help="出進口廠商登記 CSV（data.gov.tw 資料集 79641）：用英文名猜官網網域")
     r.add_argument("--only", help="只跑這份 CSV 的「統編」欄列出的公司（量測用）")
+    r.add_argument("--resume", action="store_true", help="從 --out 裡的 progress.jsonl 接著跑（已跑過的公司不再跑）")
     r.add_argument("--search", action="store_true",
                    help="猜不到網域時用自架的 searchcrawl 搜尋（要先 npm start；設定在 config.toml [search]）")
     r.add_argument("--registry", choices=["tw", "gb", "jp"], default="tw",

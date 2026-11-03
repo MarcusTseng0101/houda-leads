@@ -163,3 +163,17 @@ def test_specific_hinted_industry_beats_generic_machinery(cfg):
 
 def test_registry_292_hints_semiconductor_equipment(R):
     assert "半導體、PCB與電子製造設備" in R.hinted_industries("TW", ["292"])
+
+
+
+def test_subcontract_signal_needs_two_words(cfg):
+    from houda_leads import channel
+    assert channel.subcontract_signal("提供 CNC 加工與精密加工代工服務", cfg) == ["代工", "精密加工", "CNC 加工"]
+    assert channel.subcontract_signal("歡迎 OEM／ODM 合作，專業 CNC 車床製造", cfg) == []     # OEM/ODM 不算
+
+
+def test_own_equipment_is_only_a_mention_in_chinese(cfg):
+    inds = [Industry("機械", (Keyword("cnc", True), Keyword("機械手臂", False)))]
+    t = [extract.PageText("u", "本廠引進 CNC 與機械手臂。")]
+    c = classify.classify(t, inds, cfg, lang="zh")
+    assert c.industry == "" and c.mentions.get("機械")

@@ -59,6 +59,16 @@ def channel_signal(text: str, cfg: dict, brands: list[NamedEntry]) -> bool:
     return bool(words) and bool(brands_in(text, brands))
 
 
+def subcontract_signal(text: str, cfg: dict) -> list[str]:
+    """加工代工廠：「CNC 加工」「代工」「OEM」這類字出現至少 min_hits 個不同的，網站上的 CNC／自動化
+    多半是自己工廠的設備，不是在賣這種設備（2026-11-03 台灣 500 家試跑：喬大彈簧、萬向精密、巨翔精密）。"""
+    c = cfg.get("subcontract")
+    if not c:
+        return []
+    hits = [w for w in c["signal_words"] if find_alias(text, w) >= 0]
+    return hits if len(hits) >= int(c["min_hits"]) else []
+
+
 def component_signal(text: str, cfg: dict) -> list[str]:
     """元件／材料供應商：出現至少 min_hits 個不同的元件字眼才算（只有 1 個太容易誤中）。"""
     c = cfg["component"]

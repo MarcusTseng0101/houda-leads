@@ -95,7 +95,7 @@ def classify(texts: list[PageText], industries: list[Industry], cfg: dict, hints
     有提示的產業裡同時有泛用類（generic_industries）和說得出用途的類別時，只看後者。"""
     c = cfg["classify"]
     window = int(c["evidence_window"])
-    markers, lookback = c["application_markers"], int(c["application_lookback"])
+    markers, lookback = list(c["application_markers"]) + c.get(f"application_markers_{lang}", []), int(c["application_lookback"])
     after_markers, lookahead = list(c.get("application_after_markers", [])), int(c.get("application_lookahead", 0))
     after_markers += c.get(f"application_after_markers_{lang}", [])
     variants = c.get("text_variants", {})
