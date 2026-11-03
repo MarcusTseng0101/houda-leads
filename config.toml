@@ -48,7 +48,7 @@ application_markers_zh = ["引進", "導入", "購置", "添購", "增設", "配
 # 日文：「半導体製造装置向け部品」「測定器を導入」說的是客戶或自己買的設備（日本試跑學到的）
 application_after_markers_ja = ["向け", "を導入", "導入して", "用途"]
 # 網站用哪個語言的關鍵字比（英數字的字每個語言都比）
-lang_by_country = { TW = "zh", CN = "zh", HK = "zh", JP = "ja", default = "en" }
+lang_by_country = { TW = "zh", CN = "zh", HK = "zh", JP = "ja", FR = "fr", default = "en" }
 application_lookback = 30       # 猜的，可調整
 # 異體字（只能等長）：網站用的字 → 關鍵字表用的字
 text_variants = { "板金" = "鈑金", "臺" = "台", "線束" = "線組" }
@@ -104,6 +104,14 @@ company_categories = ["Private Limited Company", "Public Limited Company"]
 # 休眠、沒交帳、微型公司多半沒有官網，先排除（猜的，可調整）
 exclude_account_categories = ["DORMANT", "NO ACCOUNTS FILED", "MICRO ENTITY"]
 
+[registries.fr]
+# SIRENE StockUniteLegale。NAF Rev.2 前兩碼：26 電腦電子光學、27 電力設備、28 機械設備（同英國）
+naf_prefixes = ["26", "27", "28"]
+# 法律形式：5x 是商業公司（54 SARL、55 SA、57 SAS…）；1000 個人企業主不收（個資）
+legal_prefixes = ["54", "55", "56", "57"]
+# 員工人數級距：NN 沒有員工資料、00 沒員工、01 1-2 人、02 3-5 人 → 多半沒有官網，先排除（猜的，可調整）
+exclude_staff = ["", "NN", "00", "01", "02"]
+
 [registries.jp]
 # gBizINFO 法人基本情報 CSV「事業種目」（日本標準産業分類）含這些字就留。
 # 2026-10-26 真檔：580 萬家裡有填事業種目的 15 萬家，幾乎都只寫大類（「E:製造業」），中類（29 電気機械）只有零星幾筆，
@@ -129,6 +137,7 @@ max_sites = 3                   # 最多確認幾個網站（猜的，可調整�
 timeout_seconds = 60
 lang = "zh-TW"
 country = "tw"
+region = { TW = ["zh-TW", "tw"], GB = ["en", "gb"], JP = ["ja", "jp"], FR = ["fr", "fr"] }
 # 名錄、求職、社群、電商、新聞：頁面上常有統編和電話，但不是這家公司的官網，直接跳過
 skip_domains = ["twincn.com", "findbiz.nat.gov.tw", "gcis.nat.gov.tw", "104.com.tw", "1111.com.tw", "518.com.tw",
                 "yes123.com.tw", "cakeresume.com", "facebook.com", "instagram.com", "youtube.com", "twitter.com",
@@ -141,10 +150,20 @@ skip_domains = ["twincn.com", "findbiz.nat.gov.tw", "gcis.nat.gov.tw", "104.com.
                 "thomasnet.com", "globalsources.com", "tradekey.com", "ec21.com", "yellowpages.com.tw",
                 "twbusiness.nat.gov.tw", "google.com", "bing.com", "duckduckgo.com", "yahoo.com", "line.me",
                 "ptt.cc", "dcard.tw", "pixnet.net", "blogspot.com", "medium.com", "github.com",
-                "teamtaiwan.info", "companys.com.tw", "mygov.tw", "tw66.com.tw", "web66.tw", "web66.com.tw"]   # 黃頁平台的公司子網域也不算官網
+                "teamtaiwan.info", "companys.com.tw", "mygov.tw", "tw66.com.tw", "web66.tw", "web66.com.tw",
+                # 國外名錄（英國、日本、法國、全球）
+                "company-information.service.gov.uk", "endole.co.uk", "companycheck.co.uk", "bizdb.co.uk",
+                "yell.com", "checkcompany.co.uk", "opencorporates.com", "zoominfo.com", "crunchbase.com",
+                "glassdoor.com", "glassdoor.co.uk", "indeed.com", "uk.indeed.com", "bloomberg.com", "rocketreach.co",
+                "houjin-bangou.nta.go.jp", "info.gbiz.go.jp", "baseconnect.in", "salesnow.jp", "alarmbox.jp",
+                "mapion.co.jp", "ekiten.jp", "wantedly.com", "en-japan.com", "mynavi.jp", "rikunabi.com", "doda.jp",
+                "jp.indeed.com", "societe.com", "pappers.fr", "infogreffe.fr", "verif.com", "manageo.fr",
+                "annuaire-entreprises.data.gouv.fr", "pagesjaunes.fr", "societeinfo.com", "corporama.com",
+                "fr.kompass.com", "b-reputation.com", "fr.indeed.com"]   # 黃頁平台的公司子網域也不算官網
 
 [discover.tlds]
 GB = [".co.uk", ".com", ".uk"]
 JP = [".co.jp", ".jp", ".com"]
 TW = [".com.tw", ".com", ".tw"]
+FR = [".fr", ".com"]
 default = [".com"]

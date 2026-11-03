@@ -163,6 +163,39 @@ def load_company_list(path: Path) -> list[Candidate]:
     return out
 
 
+# ---- 法國 SIRENE（INSEE「StockUniteLegale」，data.gouv.fr，Licence Ouverte，每月更新）----
+# 只讀這些欄位。個人企業主的姓名欄（nomUniteLegale、prenom*、pseudonyme、sexe）完全不讀（失敗模式 7）；
+# 也只收法人（法律形式 5x 公司），statutDiffusion = P（申請部分不公開）的不收（data.gouv.fr 的使用說明）。
+FR_COLS = {"siren": "siren", "diffusion": "statutDiffusionUniteLegale", "state": "etatAdministratifUniteLegale",
+           "name": "denominationUniteLegale", "usual": "denominationUsuelle1UniteLegale", "sigle": "sigleUniteLegale",
+           "legal": "categorieJuridiqueUniteLegale", "naf": "activitePrincipaleUniteLegale",
+           "staff": "trancheEffectifsUniteLegale"}
+
+
+def load_sirene(path: Path, cfg: dict) -> list[Candidate]:
+    f = cfg["registries"]["fr"]
+    nafs, legal = tuple(f["naf_prefixes"]), tuple(f["legal_prefixes"])
+    excl = set(f.get("exclude_staff", []))
+    out = []
+    with _open_csv(path) as fh:
+        reader = csv.DictReader(fh)
+        missing = [c for c in FR_COLS.values() if c not in (reader.fieldnames or [])]
+        if missing:
+            raise ValueError(f"SIRENE 檔缺欄位 {missing}：格式可能改了")
+        for r in reader:
+            get = lambda k: (r.get(FR_COLS[k]) or "").strip()
+            if get("state") != "A" or get("diffusion") != "O" or not get("legal").startswith(legal):
+                continue
+            naf = get("naf")
+            if not naf.startswith(nafs) or get("staff") in excl or not get("name"):
+                continue
+            c = Candidate(get("siren"), get("name"), "", "", [naf[:2]], [naf.replace(".", "")], [],
+                          country="FR", source="SIRENE")
+            c.aliases = [x for x in (get("usual"), get("sigle")) if x and x != get("name")]
+            out.append(c)
+    return out
+
+
 # ---- 英國 Companies House（Free Company Data Product，每月快照，免 key）----
 # 表頭有些欄位前面有空白（" CompanyNumber"），讀的時候去掉。檔案裡沒有董事姓名。
 GB_COLS = {"name": "CompanyName", "number": "CompanyNumber", "category": "CompanyCategory",

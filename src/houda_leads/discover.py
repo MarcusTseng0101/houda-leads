@@ -46,7 +46,7 @@ def candidate_urls(name: str, country: str, cfg: dict) -> list[str]:
 
 # 註冊編號、地址通常寫在這些頁（英國公司法規定要揭露，常放在頁尾、聯絡、隱私、條款頁）
 PROOF_LINK_WORDS = ("contact", "about", "privacy", "terms", "legal", "imprint", "impressum", "会社概要", "お問い合わせ",
-                    "聯絡", "聯繫", "關於", "公司簡介")
+                    "聯絡", "聯繫", "關於", "公司簡介", "mentions", "légales", "legales")
 
 
 def _norm(s: str) -> str:
@@ -165,11 +165,12 @@ def search_roots(result_urls: list[str], skip_domains: list[str], tried: list[st
 
 
 def discover_by_search(fetcher, query: str, names: list[str], reg_id: str, cfg: dict, proof: list[str] = (),
-                       tried: list[str] = ()) -> tuple[str, list[extract.Page], list[str]]:
+                       tried: list[str] = (), country: str = "TW") -> tuple[str, list[extract.Page], list[str]]:
     """猜網域找不到：用自架的 searchcrawl 搜尋（不用 API key），結果的網站一樣要確認才採用（失敗模式 4）。"""
     s = cfg["search"]
     try:
-        results = fetcher.search(query, int(s["results"]))
+        results = fetcher.search(query, int(s["results"]), country) if country != "TW" \
+            else fetcher.search(query, int(s["results"]))
     except Exception as e:
         return "", [], [f"搜尋失敗：{type(e).__name__}"]
     log = []

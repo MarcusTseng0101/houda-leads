@@ -193,12 +193,9 @@ def source_discover_sites(a, cfg, stats: dict):
         how = "猜網域" if url else ""
         if not url and a.search:
             tried = [u for n in names for u in discover.candidate_urls(n, "TW", cfg)]
-            for q in (f"{c.name} {c.tax_id}", c.name):     # 加統編的結果常被名錄網站佔滿，再只搜公司名一次
-                url, _home, more = discover.discover_by_search(fetcher, q, names, c.tax_id, cfg, proof, tried)
-                problems += more
-                if url:
-                    break
-                tried += [l[3:].split("：")[0] for l in more if l.startswith("搜尋 ")]
+            # 加統編的結果常被名錄網站佔滿，再只搜公司名一次
+            url, more = _search_site(fetcher, [f"{c.name} {c.tax_id}", c.name], names, c.tax_id, "TW", cfg, proof, tried)
+            problems += more
             how = "搜尋" if url else ""
         pages, more = crawl.crawl_site(fetcher, url, cfg) if url else ([], ["沒有找到官網"])
         problems += more
@@ -213,6 +210,20 @@ def source_discover_sites(a, cfg, stats: dict):
     stats["請求數"] = fetcher.requests
     stats["搜尋次數"] = fetcher.searches
     stats["對禁止網域的請求"] = fetcher.denied_requests
+
+
+def _search_site(fetcher, queries: list[str], names: list[str], reg_id: str, country: str, cfg: dict,
+                 proof: list[str], tried: list[str]) -> tuple[str, list[str]]:
+    """猜網域找不到：依序用每個查詢搜尋，第一個確認過的網站就用（台灣、英國、日本共用）。"""
+    from . import discover
+    problems = []
+    for q in queries:
+        url, _home, more = discover.discover_by_search(fetcher, q, names, reg_id, cfg, proof, tried, country)
+        problems += more
+        if url:
+            return url, problems
+        tried = list(tried) + [l[3:].split("：")[0] for l in more if l.startswith("搜尋 ")]
+    return "", problems
 
 
 def _check_search_service(cfg) -> None:
@@ -258,14 +269,19 @@ def source_sites(a, cfg, stats: dict):
 def registry_sites(a, cfg, stats: dict):
     """國外政府登記（--registry gb|jp）：登記檔有官網就用，沒有就猜網域（discover.py，確認過才採用）。"""
     from . import crawl, discover, fetch, sources
-    load = {"gb": sources.load_companies_house, "jp": sources.load_gbizinfo}[a.registry]
+    load = {"gb": sources.load_companies_house, "jp": sources.load_gbizinfo, "fr": sources.load_sirene}[a.registry]
     cands = load(Path(a.source), cfg)
     stats["初篩後候選公司"] = len(cands)
     if a.sample:                     # 試跑：固定種子抽樣（登記檔照名字排序，取前 N 家會全是 A 開頭）
         import random
         cands = random.Random(a.seed).sample(cands, min(a.sample, len(cands)))
     cands = cands[: a.limit or None]
+    done = getattr(a, "done", set())
+    stats["本次要跑"] = sum(c.tax_id not in done for c in cands)
+    cands = [c for c in cands if c.tax_id not in done]
     fetcher = fetch.Fetcher(cfg, cache_dir=config.ROOT / "data" / "cache")
+    if a.search:
+        _check_search_service(cfg)
     for c in cands:
         t0 = time.monotonic()
         names = [c.name] + c.aliases
@@ -274,10 +290,17 @@ def registry_sites(a, cfg, stats: dict):
             pages, problems = crawl.crawl_site(fetcher, url, cfg)
             how = "登記檔"
         else:
-            url, _home, problems = discover.discover(fetcher, names, c.tax_id, c.country, cfg, [c.postcode])
+            proof = [c.postcode] if c.postcode else []
+            url, _home, problems = discover.discover(fetcher, names, c.tax_id, c.country, cfg, proof)
+            how = "猜網域" if url else ""
+            if not url and a.search:
+                tried = [u for n in names for u in discover.candidate_urls(n, c.country, cfg)]
+                qs = [f"{c.name} {c.postcode}".strip(), c.name] if c.postcode else [c.name]
+                url, more = _search_site(fetcher, qs, names, c.tax_id, c.country, cfg, proof, tried)
+                problems += more
+                how = "搜尋" if url else ""
             pages, more = crawl.crawl_site(fetcher, url, cfg) if url else ([], ["沒有找到官網"])
             problems += more
-            how = "猜網域" if url else ""
         stats.setdefault("官網從哪來", {}).setdefault(how or "沒找到", 0)
         stats["官網從哪來"][how or "沒找到"] += 1
         stats.setdefault("每家秒數", []).append(round(time.monotonic() - t0, 1))
@@ -286,6 +309,7 @@ def registry_sites(a, cfg, stats: dict):
                 "工廠主要產品": "、".join(c.industries + c.products), "來源": c.source}
         yield {"meta": meta, "pages": pages, "problems": problems}
     stats["請求數"] = fetcher.requests
+    stats["搜尋次數"] = fetcher.searches
     stats["對禁止網域的請求"] = fetcher.denied_requests
 
 
@@ -431,7 +455,7 @@ def main(argv=None) -> int:
     r.add_argument("--resume", action="store_true", help="從 --out 裡的 progress.jsonl 接著跑（已跑過的公司不再跑）")
     r.add_argument("--search", action="store_true",
                    help="猜不到網域時用自架的 searchcrawl 搜尋（要先 npm start；設定在 config.toml [search]）")
-    r.add_argument("--registry", choices=["tw", "gb", "jp"], default="tw",
+    r.add_argument("--registry", choices=["tw", "gb", "jp", "fr"], default="tw",
                    help="--source 是哪一種登記檔：tw 工廠登記、gb Companies House 快照、jp gBizINFO 基本情報")
     r.add_argument("--sample", type=int, help="試跑：從初篩名單隨機抽 N 家（固定種子）")
     r.add_argument("--seed", type=int, default=20261020)

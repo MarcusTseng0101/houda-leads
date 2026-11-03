@@ -113,19 +113,20 @@ class Fetcher:
             return None
         return self.cache_dir / (hashlib.sha256(url.encode()).hexdigest() + ".html")
 
-    def search(self, query: str, limit: int) -> list[str]:
+    def search(self, query: str, limit: int, country: str = "TW") -> list[str]:
         """自架的 searchcrawl（本機 HTTP，不用 API key）。只回傳結果網址；禁止網域直接丟掉、不算請求。
         結果存快取：重跑不會再搜一次（搜尋背後是 DuckDuckGo，用太兇會被限速）。"""
         s = self.cfg["search"]
-        cp = self.cache_dir / ("search-" + hashlib.sha256(f"{query}|{limit}".encode()).hexdigest() + ".json") \
+        lang, region = s.get("region", {}).get(country, [s.get("lang", "zh-TW"), s.get("country", "tw")])
+        key = f"{query}|{limit}" if country == "TW" else f"{query}|{limit}|{country}"   # 台灣沿用舊的快取鍵
+        cp = self.cache_dir / ("search-" + hashlib.sha256(key.encode()).hexdigest() + ".json") \
             if self.cache_dir else None
         if cp and cp.exists():
             urls = json.loads(cp.read_text(encoding="utf-8"))
         else:
             self._wait("searchcrawl")
             self.searches += 1
-            r = self.client.post(s["url"], json={"query": query, "limit": limit, "lang": s.get("lang", "zh-TW"),
-                                                 "country": s.get("country", "tw")},
+            r = self.client.post(s["url"], json={"query": query, "limit": limit, "lang": lang, "country": region},
                                  timeout=float(s.get("timeout_seconds", 60)))
             if r.status_code == 502:          # 每個搜尋引擎都沒結果
                 urls = []

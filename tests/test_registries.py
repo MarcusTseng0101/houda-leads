@@ -281,3 +281,47 @@ def test_name_plus_factory_address_confirms_when_phone_changed(cfg):
                                               ["MOULD FLYING INDUSTRIAL CO., LTD.", "模得發工業股份有限公司"], "12345678",
                                               cfg, proof)
     assert url == "https://www.mouldfly.com/" and "地址" in log[-1]
+
+
+
+# ── 法國 SIRENE（2026-11-03）──
+
+FR_HDR = ["siren", "statutDiffusionUniteLegale", "unitePurgeeUniteLegale", "dateCreationUniteLegale", "sigleUniteLegale",
+          "sexeUniteLegale", "prenom1UniteLegale", "prenomUsuelUniteLegale", "trancheEffectifsUniteLegale",
+          "etatAdministratifUniteLegale", "nomUniteLegale", "denominationUniteLegale", "denominationUsuelle1UniteLegale",
+          "categorieJuridiqueUniteLegale", "activitePrincipaleUniteLegale"]
+
+
+def fr_row(siren, name, legal="5710", naf="27.12Z", diff="O", state="A", staff="11", nom="", prenom=""):
+    return [siren, diff, "", "", "", "", prenom, prenom, staff, state, nom, name, "", legal, naf]
+
+
+def test_sirene_keeps_companies_only_and_never_reads_people(tmp_path, cfg):
+    p = tmp_path / "fr.csv"
+    with p.open("w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(FR_HDR)
+        w.writerows([
+            fr_row("123456789", "TABLEAUX DU RHONE"),
+            fr_row("223456789", "", legal="1000", nom="DUPONT", prenom="JEAN"),     # 個人企業主：不收
+            fr_row("323456789", "CACHEE SAS", diff="P"),                            # 申請部分不公開：不收
+            fr_row("423456789", "FERMEE SAS", state="C"),
+            fr_row("523456789", "BOULANGERIE SAS", naf="10.71C"),
+            fr_row("623456789", "MINI SAS", staff="01"),
+        ])
+    cs = sources.load_sirene(p, cfg)
+    assert [(c.tax_id, c.name, c.country) for c in cs] == [("123456789", "TABLEAUX DU RHONE", "FR")]
+    assert cs[0].industries == ["2712Z"] and "DUPONT" not in repr(cs) and "JEAN" not in repr(cs)
+
+
+def test_siren_written_with_spaces_siret_or_vat():
+    for text in ("RCS Lyon 123 456 789", "SIRET : 123 456 789 00012", "TVA intracom. FR 12 123456789",
+                 "Siren 123456789"):
+        t = [extract.PageText("u", text)]
+        assert extract.site_confirmation(t, "123456789", "X SAS", "註冊編號") == "註冊編號", text
+    t = [extract.PageText("u", "Tel 0123 456 7890")]
+    assert extract.site_confirmation(t, "123456789", "X SAS", "註冊編號") == "未確認"
+
+
+def test_french_hints_follow_nace(R):
+    assert R.hinted_industries("FR", ["2712"]) == ["配電盤與電機控制"]

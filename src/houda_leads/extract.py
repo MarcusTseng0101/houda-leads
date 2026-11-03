@@ -166,6 +166,13 @@ def site_confirmation(texts: list[PageText], tax_id: str, company_name: str, id_
     for i in filter(None, dict.fromkeys(ids)):
         if re.search(rf"(?<![\dA-Za-z]){re.escape(i)}(?!\d)", joined):
             return id_label
+    # 法國 SIREN 9 碼：網站常寫「123 456 789」、SIRET（後面再 5 碼）、TVA「FR12 123456789」（2026-11-03）
+    if re.fullmatch(r"\d{9}", tax_id or ""):
+        a, b, c = tax_id[:3], tax_id[3:6], tax_id[6:]
+        sep = r"[\s\u00a0.]?"
+        if re.search(rf"(?<!\d){a}{sep}{b}{sep}{c}(?:{sep}\d{{5}})?(?!\d)", joined) or \
+                re.search(rf"FR{sep}\d{{2}}{sep}{a}{sep}{b}{sep}{c}(?!\d)", joined):
+            return id_label
     core = company_core(company_name)
     if len(core) >= 4 and _name_on_page(core, joined):
         return "公司名"

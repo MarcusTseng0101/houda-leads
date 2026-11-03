@@ -126,3 +126,13 @@
 - gold：皓澤精密（Julia 標 Y）也被送人工 → 潛在客戶 11 家對 10 → 10 家對 9（gold 已看過，只當參考）
 - run：每 25 家印進度；progress.jsonl 每家一行，中斷後 --resume 接著跑，正常跑完自動刪
 - 使用者 2026-11-03 提醒：要的是全球潛在客戶，台灣這條先停在這裡
+
+## 2026-11-03 全球：英國、日本接上搜尋；加法國 SIRENE（使用者選 A）
+- 搜尋找官網抽成共用（台灣、英國、日本、法國）；config [search] region 依國家設語言／地區；skip_domains 補英日法名錄
+- 英國同一批 60 家（種子 20261022）：官網 10 → 23（猜網域 11＋搜尋 12）、潛在客戶 7 → 13（我讀：約 11 家合理）
+  搜尋 88 次沒失敗；每家 21 秒；全英國 11,855 家約 70 小時
+- 法國：data/fr/StockUniteLegale_20261101.zip（data.gouv.fr，985 MB，Licence Ouverte）
+  只讀 siren、名稱、法律形式、NAF、狀態、員工級距；個人企業主（1000）和 statutDiffusion=P 不收、姓名欄不讀
+  NAF 26/27/28、法律形式 54–57、員工 6 人以上 → 4,429 家；讀檔 12.5 分鐘
+- 法文關鍵字 17 類（keywords_extra.csv，語言 fr）、registry_hints FR（NAF 前 4 碼同英國 SIC）
+- SIREN 確認：「123 456 789」、SIRET、TVA「FR12 123456789」都算；找證據頁多看 mentions légales
