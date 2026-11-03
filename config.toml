@@ -132,7 +132,7 @@ skip_domains = ["twincn.com", "findbiz.nat.gov.tw", "gcis.nat.gov.tw", "104.com.
                 "thomasnet.com", "globalsources.com", "tradekey.com", "ec21.com", "yellowpages.com.tw",
                 "twbusiness.nat.gov.tw", "google.com", "bing.com", "duckduckgo.com", "yahoo.com", "line.me",
                 "ptt.cc", "dcard.tw", "pixnet.net", "blogspot.com", "medium.com", "github.com",
-                "teamtaiwan.info", "companys.com.tw", "mygov.tw", "tw66.com.tw", "web66.tw"]   # 黃頁平台的公司子網域也不算官網
+                "teamtaiwan.info", "companys.com.tw", "mygov.tw", "tw66.com.tw", "web66.tw", "web66.com.tw"]   # 黃頁平台的公司子網域也不算官網
 
 [discover.tlds]
 GB = [".co.uk", ".com", ".uk"]
