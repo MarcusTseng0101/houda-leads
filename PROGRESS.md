@@ -136,3 +136,6 @@
   NAF 26/27/28、法律形式 54–57、員工 6 人以上 → 4,429 家；讀檔 12.5 分鐘
 - 法文關鍵字 17 類（keywords_extra.csv，語言 fr）、registry_hints FR（NAF 前 4 碼同英國 SIC）
 - SIREN 確認：「123 456 789」、SIRET、TVA「FR12 123456789」都算；找證據頁多看 mentions légales
+- 法國 60 家（種子 20261103）：官網 15（猜網域 7＋搜尋 8，全部看到 SIREN 才採用）、潛在客戶 7（我讀：7 家都合理）
+- 法文 fabrication＝製造，被當成金屬加工 → ignore_keywords_by_lang；改後 CCTE 判配電盤、Turner 判自動化（都只中 1 字，送人工）
+- 法文關鍵字太少：很多家只中 1 個字

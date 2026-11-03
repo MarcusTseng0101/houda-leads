@@ -177,3 +177,11 @@ def test_own_equipment_is_only_a_mention_in_chinese(cfg):
     t = [extract.PageText("u", "本廠引進 CNC 與機械手臂。")]
     c = classify.classify(t, inds, cfg, lang="zh")
     assert c.industry == "" and c.mentions.get("機械")
+
+
+
+def test_keyword_ignored_for_one_language(cfg):
+    inds = [Industry("金屬", (Keyword("fabrication", True), Keyword("sheet metal", True)))]
+    t = [extract.PageText("u", "Fabrication de machines. Sheet metal fabrication.")]
+    assert classify.classify(t, inds, cfg, lang="en").hits == ["fabrication", "sheet metal"]
+    assert classify.classify(t, inds, cfg, lang="fr").hits == ["sheet metal"]

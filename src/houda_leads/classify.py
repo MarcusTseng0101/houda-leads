@@ -99,6 +99,7 @@ def classify(texts: list[PageText], industries: list[Industry], cfg: dict, hints
     after_markers, lookahead = list(c.get("application_after_markers", [])), int(c.get("application_lookahead", 0))
     after_markers += c.get(f"application_after_markers_{lang}", [])
     variants = c.get("text_variants", {})
+    ignore = {w.lower() for w in c.get("ignore_keywords_by_lang", {}).get(lang, [])}   # 在這個語言是一般用字
     found: dict[str, list[tuple[str, int, str, int]]] = {}   # 產業 → [(關鍵字, 頁序, 網址, 位置)]（做什麼）
     mentioned: dict[str, list[str]] = {}
     for pi, t in enumerate(texts):
@@ -106,6 +107,8 @@ def classify(texts: list[PageText], industries: list[Industry], cfg: dict, hints
         for ind in industries:
             for kw in ind.keywords:
                 if not kw.ascii_word and kw.lang != lang:   # 中文的字不比日文網站，反之亦然
+                    continue
+                if kw.text.lower() in ignore:
                     continue
                 if any(h[0] == kw.text for h in found.get(ind.name, [])):
                     continue
