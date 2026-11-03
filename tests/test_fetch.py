@@ -138,3 +138,18 @@ def test_robots_disallow_is_not_unreachable(cfg):
     with pytest.raises(fetch.RobotsDisallowed) as e:
         f.get("https://example.tw/private/page")
     assert type(e.value) is fetch.RobotsDisallowed
+
+
+
+def test_search_drops_denied_domains_and_is_cached(cfg, tmp_path):
+    seen = []
+
+    def h(req):
+        seen.append(str(req.url))
+        return httpx.Response(200, json={"success": True, "data": [
+            {"url": "https://www.linkedin.com/company/x"}, {"url": "https://www.acme.com.tw/"}, {"url": "javascript:x"}]})
+
+    f, _, _ = make(cfg, h, tmp_path=tmp_path)
+    assert f.search("acme 12345678", 8) == ["https://www.acme.com.tw/"]
+    assert f.search("acme 12345678", 8) == ["https://www.acme.com.tw/"]     # 第二次從快取
+    assert len(seen) == 1 and f.searches == 1 and f.denied_requests == 0

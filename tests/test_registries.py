@@ -216,3 +216,68 @@ def test_parked_domain_with_contact_link_still_rejected(cfg):
     url, _, _ = discover.discover(f, ["E-CHUNG MACHINERY COMPANY", "一中工業股份有限公司"], "12345678", "TW", cfg,
                                   ["tel:423581234"])
     assert url == ""
+
+
+
+# ── 搜尋找官網（自架 searchcrawl，2026-11-03 使用者同意）──
+
+class SearchFetcher(FakeFetcher):
+    def __init__(self, pages, results):
+        super().__init__(pages)
+        self.results = results
+
+    def search(self, query, limit):
+        self.query = query
+        return self.results
+
+
+def test_search_roots_use_site_home_and_skip_directories(cfg):
+    skip = cfg["search"]["skip_domains"]
+    res = ["https://www.twincn.com/item.aspx?no=22243425", "https://teamtaiwan.info/22243425",
+           "http://www.ginzheng.com/products/a.html", "http://www.ginzheng.com/about", "https://www.other.com.tw/x"]
+    assert discover.search_roots(res, skip, limit=3) == ["http://www.ginzheng.com/", "https://www.other.com.tw/"]
+    assert discover.search_roots(res, skip, tried=["https://www.ginzheng.com/"]) == ["https://www.other.com.tw/"]
+
+
+def test_search_result_confirmed_on_home(cfg):
+    home = "<html><body><p>勤正電子股份有限公司 統一編號：22243425</p></body></html>"
+    f = SearchFetcher({"http://www.ginzheng.com/": home},
+                      ["https://www.twincn.com/item.aspx?no=22243425", "http://www.ginzheng.com/index.html"])
+    url, pages, log = discover.discover_by_search(f, "勤正電子股份有限公司 22243425", ["勤正電子股份有限公司"],
+                                                  "22243425", cfg)
+    assert url == "http://www.ginzheng.com/" and pages and "twincn" not in "".join(f.asked)
+
+
+def test_unknown_directory_is_rejected_because_its_home_lacks_the_company(cfg):
+    """沒列在黑名單的名錄網站：結果那一頁有統編，但回首頁確認就沒有 → 不採用。"""
+    f = SearchFetcher({"https://new-directory.example/": "<html><body><p>全台公司資料查詢</p></body></html>",
+                       "https://new-directory.example/22243425": "<p>勤正電子股份有限公司 22243425</p>"},
+                      ["https://new-directory.example/22243425"])
+    url, _, log = discover.discover_by_search(f, "q", ["勤正電子股份有限公司"], "22243425", cfg)
+    assert url == "" and "https://new-directory.example/22243425" not in f.asked
+
+
+def test_search_failure_is_logged_not_raised(cfg):
+    class Broken(FakeFetcher):
+        def search(self, q, n):
+            raise ConnectionError("searchcrawl 沒開")
+    url, _, log = discover.discover_by_search(Broken({}), "q", ["X"], "1", cfg)
+    assert url == "" and "搜尋失敗" in log[0]
+
+
+
+def test_address_key():
+    assert discover.address_key("臺南市永康區塩洲里塩忠街31號") == "塩忠街31號"
+    assert discover.address_key("新北市五股區五權路１２號３樓") == "五權路12號"
+    assert discover.address_key("桃園市龜山區文化里文化一路") == ""          # 沒有門牌：不用
+
+
+def test_name_plus_factory_address_confirms_when_phone_changed(cfg):
+    """模得發：登記電話換過了，網站上的地址還對得上（2026-11-03）。"""
+    home = "<html><body><p>模得發工業股份有限公司 地址：台中市大雅區雅潭路四段100號 TEL: 04-2515-9799</p></body></html>"
+    f = FakeFetcher({"https://www.mouldfly.com/": home})
+    proof = ["tel:425293626", "addr:" + discover.address_key("臺中市大雅區雅潭路四段100號")]
+    url, _, log = discover.discover_by_search(SearchFetcher(f.pages, ["https://www.mouldfly.com/"]), "q",
+                                              ["MOULD FLYING INDUSTRIAL CO., LTD.", "模得發工業股份有限公司"], "12345678",
+                                              cfg, proof)
+    assert url == "https://www.mouldfly.com/" and "地址" in log[-1]

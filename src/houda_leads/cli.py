@@ -170,17 +170,32 @@ def source_discover_sites(a, cfg, stats: dict):
     cands = cands[: a.limit or None]
     trade = sources.load_trade_registry(Path(a.trade), {c.tax_id for c in cands})
     fetcher = fetch.Fetcher(cfg, cache_dir=config.ROOT / "data" / "cache")
+    if a.search:
+        _check_search_service(cfg)
     for c in cands:
         t0 = time.monotonic()
         t = trade.get(c.tax_id)
+        names = [t.name_en, c.name] if t and t.name_en else [c.name]
+        proof = [f"tel:{t.phone_digits}"] if t and t.phone_digits else []
+        if (ak := discover.address_key(c.address)):
+            proof.append(f"addr:{ak}")
         if t and t.name_en:
-            proof = [f"tel:{t.phone_digits}"] if t.phone_digits else []
-            url, _home, problems = discover.discover(fetcher, [t.name_en, c.name], c.tax_id, "TW", cfg, proof)
+            url, _home, problems = discover.discover(fetcher, names, c.tax_id, "TW", cfg, proof)
         else:
             url, problems = "", ["出進口廠商登記查不到英文名稱，猜不出網域"]
+        how = "猜網域" if url else ""
+        if not url and a.search:
+            tried = [u for n in names for u in discover.candidate_urls(n, "TW", cfg)]
+            for q in (f"{c.name} {c.tax_id}", c.name):     # 加統編的結果常被名錄網站佔滿，再只搜公司名一次
+                url, _home, more = discover.discover_by_search(fetcher, q, names, c.tax_id, cfg, proof, tried)
+                problems += more
+                if url:
+                    break
+                tried += [l[3:].split("：")[0] for l in more if l.startswith("搜尋 ")]
+            how = "搜尋" if url else ""
         pages, more = crawl.crawl_site(fetcher, url, cfg) if url else ([], ["沒有找到官網"])
         problems += more
-        how = "猜網域" if url else ("沒找到" if t and t.name_en else "沒有英文名")
+        how = how or "沒找到"
         stats.setdefault("官網從哪來", {}).setdefault(how, 0)
         stats["官網從哪來"][how] += 1
         stats.setdefault("每家秒數", []).append(round(time.monotonic() - t0, 1))
@@ -189,7 +204,22 @@ def source_discover_sites(a, cfg, stats: dict):
                 "工廠主要產品": "、".join(c.products)}
         yield {"meta": meta, "pages": pages, "problems": problems}
     stats["請求數"] = fetcher.requests
+    stats["搜尋次數"] = fetcher.searches
     stats["對禁止網域的請求"] = fetcher.denied_requests
+
+
+def _check_search_service(cfg) -> None:
+    """--search 要先開 searchcrawl 的 HTTP 服務；沒開就一開始就停，不要跑完才發現每家都搜尋失敗。"""
+    import urllib.request
+    health = cfg["search"]["url"].rsplit("/v1/", 1)[0] + "/health"
+    try:
+        with urllib.request.urlopen(health, timeout=5) as r:
+            ok = r.status == 200
+    except Exception:
+        ok = False
+    if not ok:
+        raise NotYet(f"--search 需要 searchcrawl 的 HTTP 服務（{health} 沒回應）："
+                     "到 C:/Users/tseng/searchcrawl 執行 npm start")
 
 
 def source_sites(a, cfg, stats: dict):
@@ -369,6 +399,8 @@ def main(argv=None) -> int:
     r.add_argument("--websites", help="「統編,官網」對照表（人工找的）；沒給就要給 --trade")
     r.add_argument("--trade", help="出進口廠商登記 CSV（data.gov.tw 資料集 79641）：用英文名猜官網網域")
     r.add_argument("--only", help="只跑這份 CSV 的「統編」欄列出的公司（量測用）")
+    r.add_argument("--search", action="store_true",
+                   help="猜不到網域時用自架的 searchcrawl 搜尋（要先 npm start；設定在 config.toml [search]）")
     r.add_argument("--registry", choices=["tw", "gb", "jp"], default="tw",
                    help="--source 是哪一種登記檔：tw 工廠登記、gb Companies House 快照、jp gBizINFO 基本情報")
     r.add_argument("--sample", type=int, help="試跑：從初篩名單隨機抽 N 家（固定種子）")

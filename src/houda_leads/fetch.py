@@ -4,10 +4,12 @@
 - robots.txt：不允許就不抓
 - 同一網域請求間隔（失敗模式 8）
 - 快取到 data/cache/，重跑不會再打一次對方網站
+- search()：本機自架的 searchcrawl（使用者 2026-11-03 同意），找不到官網時用
 """
 from __future__ import annotations
 
 import hashlib
+import json
 import time
 import urllib.robotparser
 from pathlib import Path
@@ -47,6 +49,8 @@ class Fetcher:
                  clock: Callable[[], float] = time.monotonic,
                  sleep: Callable[[float], None] = time.sleep):
         f = cfg["fetch"]
+        self.cfg = cfg
+        self.searches = 0
         self.interval = float(f["min_interval_seconds"])
         self.ua = f["user_agent"]
         # 不讓 httpx 自動跟轉址：自動跟的話，轉到被禁止的網域時請求已經送出去了
@@ -108,6 +112,30 @@ class Fetcher:
         if not self.cache_dir:
             return None
         return self.cache_dir / (hashlib.sha256(url.encode()).hexdigest() + ".html")
+
+    def search(self, query: str, limit: int) -> list[str]:
+        """自架的 searchcrawl（本機 HTTP，不用 API key）。只回傳結果網址；禁止網域直接丟掉、不算請求。
+        結果存快取：重跑不會再搜一次（搜尋背後是 DuckDuckGo，用太兇會被限速）。"""
+        s = self.cfg["search"]
+        cp = self.cache_dir / ("search-" + hashlib.sha256(f"{query}|{limit}".encode()).hexdigest() + ".json") \
+            if self.cache_dir else None
+        if cp and cp.exists():
+            urls = json.loads(cp.read_text(encoding="utf-8"))
+        else:
+            self._wait("searchcrawl")
+            self.searches += 1
+            r = self.client.post(s["url"], json={"query": query, "limit": limit, "lang": s.get("lang", "zh-TW"),
+                                                 "country": s.get("country", "tw")},
+                                 timeout=float(s.get("timeout_seconds", 60)))
+            if r.status_code == 502:          # 每個搜尋引擎都沒結果
+                urls = []
+            else:
+                r.raise_for_status()
+                urls = [d.get("url", "") for d in r.json().get("data", [])]
+            if cp:
+                cp.parent.mkdir(parents=True, exist_ok=True)
+                cp.write_text(json.dumps(urls, ensure_ascii=False), encoding="utf-8")
+        return [u for u in urls if u.startswith(("http://", "https://")) and not is_denied(u)]
 
     def get(self, url: str) -> str:
         if is_denied(url):

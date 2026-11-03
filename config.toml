@@ -112,6 +112,28 @@ max_candidates_by_country = { TW = 8 }   # 台灣多試品牌字（猜的，可�
 drop_words = { TW = ["technology", "technologies", "tech", "industrial", "industry", "industries", "electronic", "electronics", "electric", "electrical", "enterprise", "enterprises", "international", "precision", "machinery", "machine", "engineering", "group", "taiwan", "trading", "manufacturing", "mfg", "development", "science", "scientific", "materials", "material", "plastic", "plastics", "metal", "optoelectronics", "optical", "automation", "instrument", "instruments", "systems", "system"] }
 http_fallback = ["TW"]          # https 連不上再試 http（台灣小公司官網常沒有憑證）
 proof_pages = 3                 # 首頁只看到公司名時，再看幾頁找註冊編號／郵遞區號（猜的，可調整）
+[search]
+# 自架的 searchcrawl（C:/Users/tseng/searchcrawl，npm start）：不用 API key。背後是 DuckDuckGo（非官方），用太兇會被限速
+url = "http://127.0.0.1:3002/v1/search"
+results = 8                     # 每次搜尋要幾筆結果（猜的，可調整）
+max_sites = 3                   # 最多確認幾個網站（猜的，可調整）
+timeout_seconds = 60
+lang = "zh-TW"
+country = "tw"
+# 名錄、求職、社群、電商、新聞：頁面上常有統編和電話，但不是這家公司的官網，直接跳過
+skip_domains = ["twincn.com", "findbiz.nat.gov.tw", "gcis.nat.gov.tw", "104.com.tw", "1111.com.tw", "518.com.tw",
+                "yes123.com.tw", "cakeresume.com", "facebook.com", "instagram.com", "youtube.com", "twitter.com",
+                "x.com", "opengovtw.com", "twfile.com", "findcompany.com.tw", "iyp.com.tw", "taiwantrade.com",
+                "made-in-china.com", "alibaba.com", "wikipedia.org", "mobile01.com", "ctee.com.tw", "udn.com",
+                "chinatimes.com", "ltn.com.tw", "cnyes.com", "moneydj.com", "twse.com.tw", "tpex.org.tw",
+                "data.gov.tw", "trade.gov.tw", "1688.com", "amazon.com", "shopee.tw", "ruten.com.tw", "pchome.com.tw",
+                "goodinfo.tw", "wantgoo.com", "statementdog.com", "zhihu.com", "baidu.com", "dnb.com",
+                "bizprofile.net", "companylist.org", "tw.kompass.com", "kompass.com", "europages.com",
+                "thomasnet.com", "globalsources.com", "tradekey.com", "ec21.com", "yellowpages.com.tw",
+                "twbusiness.nat.gov.tw", "google.com", "bing.com", "duckduckgo.com", "yahoo.com", "line.me",
+                "ptt.cc", "dcard.tw", "pixnet.net", "blogspot.com", "medium.com", "github.com",
+                "teamtaiwan.info", "companys.com.tw", "mygov.tw", "tw66.com.tw", "web66.tw"]   # 黃頁平台的公司子網域也不算官網
+
 [discover.tlds]
 GB = [".co.uk", ".com", ".uk"]
 JP = [".co.jp", ".jp", ".com"]

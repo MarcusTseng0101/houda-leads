@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import urlsplit
 
 from . import extract
 
@@ -52,6 +53,18 @@ def _norm(s: str) -> str:
     return re.sub(r"\s+", "", s).lower()
 
 
+def address_key(address: str) -> str:
+    """工廠地址 → 「路名＋門牌」，比對官網用。臺／台、全形半形、空白不分；縣市、區、里、鄰都拿掉（官網常省略里）。
+    「臺南市永康區塩洲里塩忠街31號」→「塩忠街31號」。太短（< 5 字）或沒有「號」就不用（2026-11-03：登記電話常換）。"""
+    s = _norm(address.translate(extract.HALFWIDTH)).replace("臺", "台")
+    s = re.sub(r"^\d{3,6}", "", s)                       # 郵遞區號
+    m = re.search(r"([^區鄉鎮市里村鄰]+?[路街道巷弄大道].*?\d+(?:之\d+)?號)", s)
+    if not m:
+        return ""
+    k = re.sub(r"^\d+鄰", "", m.group(1))
+    return k if len(k) >= 5 else ""
+
+
 def _second_proof(fetcher, url: str, html: str, reg_id: str, proof, max_pages: int, names=()) -> str:
     """首頁＋同網站的聯絡／關於／隱私頁當一組：裡面看得到註冊編號，或公司名＋第二個證據（郵遞區號、登記電話）才算。
     names：首頁沒看到公司名時，公司名也可以在這幾頁裡（台灣試跑：一中工業首頁只有產品，公司名在「關於我們」）。"""
@@ -75,9 +88,13 @@ def _second_proof(fetcher, url: str, html: str, reg_id: str, proof, max_pages: i
     for t in texts:
         digits = re.sub(r"\D", "", t.text)
         # 「tel:」開頭的是登記的電話（去掉區碼的 0）：只比數字，(04)868-1868、+886-4-8681868 都算
-        hit = [x for x in proof if x and (x[4:] in digits if x.startswith("tel:") else _norm(x) in _norm(t.text))]
+        plain = _norm(t.text.translate(extract.HALFWIDTH)).replace("臺", "台")
+        hit = [x for x in proof if x and (x[4:] in digits if x.startswith("tel:")
+                                          else x[5:] in plain if x.startswith("addr:")
+                                          else _norm(x) in _norm(t.text))]
         if hit:
-            return "公司名＋電話" if hit[0].startswith("tel:") else f"公司名＋{hit[0]}"
+            kind = {"tel:": "電話", "addr:": "地址"}
+            return "公司名＋" + next((v for k, v in kind.items() if hit[0].startswith(k)), hit[0])
     return "未確認"
 
 
@@ -106,19 +123,67 @@ def discover(fetcher, names: list[str], reg_id: str, country: str, cfg: dict,
             except Exception as e2:
                 log.append(f"猜 {url}：{type(e2).__name__}")
                 continue
-        page = extract.Page(url, html)
-        texts = [extract.PageText(url, extract.visible_text(html))]
-        how = "未確認"
-        for n in names:
-            how = extract.site_confirmation(texts, reg_id, n, "註冊編號")
-            if how != "未確認":
-                break
-        if how == "公司名":
-            how = _second_proof(fetcher, url, html, reg_id, proof, int(cfg["discover"]["proof_pages"]))
-        elif how == "未確認":           # 首頁什麼都沒有：公司名和證據可能都在聯絡／關於頁（要求一樣，只是多看幾頁）
-            how = _second_proof(fetcher, url, html, reg_id, proof, int(cfg["discover"]["proof_pages"]), names)
+        how = _confirm(fetcher, url, html, names, reg_id, proof, cfg)
         if how != "未確認":
             log.append(f"猜 {url}：首頁{how}確認")
-            return url, [page], log
+            return url, [extract.Page(url, html)], log
         log.append(f"猜 {url}：連得上但首頁看不到註冊編號（或公司名＋郵遞區號），不採用")
+    return "", [], log
+
+
+def _confirm(fetcher, url: str, html: str, names: list[str], reg_id: str, proof, cfg: dict) -> str:
+    """一個網站是不是這家公司：首頁看得到註冊編號；或首頁＋聯絡／關於頁裡有公司名＋第二個證據。"""
+    texts = [extract.PageText(url, extract.visible_text(html))]
+    how = "未確認"
+    for n in names:
+        how = extract.site_confirmation(texts, reg_id, n, "註冊編號")
+        if how != "未確認":
+            break
+    if how == "公司名":
+        how = _second_proof(fetcher, url, html, reg_id, proof, int(cfg["discover"]["proof_pages"]))
+    elif how == "未確認":           # 首頁什麼都沒有：公司名和證據可能都在聯絡／關於頁（要求一樣，只是多看幾頁）
+        how = _second_proof(fetcher, url, html, reg_id, proof, int(cfg["discover"]["proof_pages"]), names)
+    return how
+
+
+def search_roots(result_urls: list[str], skip_domains: list[str], tried: list[str] = (), limit: int = 3) -> list[str]:
+    """搜尋結果 → 要去確認的網站首頁。只取網域，不用結果那一頁：
+    名錄網站（台灣公司網、104…）那一頁上也有統編和電話，但它的首頁沒有，回首頁確認就會被擋掉。
+    skip_domains 是已知的名錄、社群、電商平台，直接跳過。"""
+    seen = {extract.site_root(u) for u in tried}
+    out = []
+    for u in result_urls:
+        root = extract.site_root(u)
+        if not root or root in seen or any(root == d or root.endswith("." + d) for d in skip_domains):
+            continue
+        seen.add(root)
+        parts = urlsplit(u)
+        out.append(f"{parts.scheme}://{parts.netloc}/")
+        if len(out) >= limit:
+            break
+    return out
+
+
+def discover_by_search(fetcher, query: str, names: list[str], reg_id: str, cfg: dict, proof: list[str] = (),
+                       tried: list[str] = ()) -> tuple[str, list[extract.Page], list[str]]:
+    """猜網域找不到：用自架的 searchcrawl 搜尋（不用 API key），結果的網站一樣要確認才採用（失敗模式 4）。"""
+    s = cfg["search"]
+    try:
+        results = fetcher.search(query, int(s["results"]))
+    except Exception as e:
+        return "", [], [f"搜尋失敗：{type(e).__name__}"]
+    log = []
+    for url in search_roots(results, s["skip_domains"], tried, int(s["max_sites"])):
+        try:
+            html = fetcher.get(url)
+        except Exception as e:
+            log.append(f"搜尋 {url}：{type(e).__name__}")
+            continue
+        how = _confirm(fetcher, url, html, names, reg_id, proof, cfg)
+        if how != "未確認":
+            log.append(f"搜尋 {url}：首頁{how}確認")
+            return url, [extract.Page(url, html)], log
+        log.append(f"搜尋 {url}：看不到統編（或公司名＋電話），不採用")
+    if not log:
+        log.append("搜尋結果裡沒有可以確認的網站")
     return "", [], log
