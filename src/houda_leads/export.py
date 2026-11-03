@@ -75,10 +75,10 @@ def _sheet(wb, name: str, cols: list[str], rows: list[dict]):
     ws.append(cols)
     for c in ws[1]:
         c.font = Font(bold=True)
-    for r in rows:
-        ws.append([None] * len(cols))
+    # 自己記列號：每格都問 ws.max_row 會掃整張表，1,600 列就卡住半小時（2026-11-04 全球合併）
+    for i, r in enumerate(rows, start=2):
         for j, c in enumerate(cols, start=1):
-            cell = ws.cell(ws.max_row, j)
+            cell = ws.cell(i, j)
             cell.value = "" if r.get(c) is None else str(r.get(c))
             cell.data_type = "s"               # 一律當文字：不讓 "=..." 變成公式
     ws.freeze_panes = "C2"
