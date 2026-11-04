@@ -49,6 +49,7 @@ def crawl_site(fetcher, start_url: str, cfg: dict) -> tuple[list[extract.Page], 
             low = (href + " " + text).lower()
             if href.startswith(("http://", "https://")) and _same_site(href, root) \
                     and any(w in low for w in words) and href not in seen \
+                    and "share=" not in href.lower() \
                     and not urlsplit(href).path.lower().endswith(SKIP_EXT):
                 queue.append(href)
     return pages, problems

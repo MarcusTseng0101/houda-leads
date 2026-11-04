@@ -47,6 +47,9 @@ application_lookahead = 30      # 猜的，可調整
 application_markers_zh = ["引進", "導入", "購置", "添購", "增設", "配置", "擁有", "投資"]
 # 日文：「半導体製造装置向け部品」「測定器を導入」說的是客戶或自己買的設備（日本試跑學到的）
 application_after_markers_ja = ["向け", "を導入", "導入して", "用途"]
+# 日文：關鍵字後面 15 個字內（不跨句）接「用」「の部品」「部品」「に必要」→ 說的是賣給誰（工作機械用鋳物、産業機械の部品）
+# 使用、利用、採用、活用、応用、専用…的「用」不算（2026-11-04 全球試跑：日本零件、鑄件廠被當成做機器）
+application_suffix_regex_ja = "[^。！？；]{0,15}?(?:(?<![使利採活応信費作運専雇])用(?!途)|の部品|部品|に必要)"
 # 網站用哪個語言的關鍵字比（英數字的字每個語言都比）
 lang_by_country = { TW = "zh", CN = "zh", HK = "zh", JP = "ja", FR = "fr", default = "en" }
 application_lookback = 30       # 猜的，可調整
@@ -58,13 +61,25 @@ text_variants = { "板金" = "鈑金", "臺" = "台", "線束" = "線組" }
 [component]
 # 元件／材料供應商：出現至少 min_hits 個不同的字 → 不當設備製造商（產業表：「IC或記憶體元件公司不一定直接使用端子台」）
 signal_words = ["二極體", "二極管", "電晶體", "MOSFET", "IGBT", "肖特基", "閘流體", "晶閘管", "整流器件",
+                "記憶體", "DRAM", "矽晶圓", "多晶矽", "單晶棒",          # 2026-11-04：記憶體、晶圓廠
                 "被動元件", "電阻器", "電容器", "晶圓代工", "IC設計", "diode", "transistor", "thyristor"]
 min_hits = 2                    # 猜的，可調整
 
 [subcontract]
 # 加工代工廠：出現至少 min_hits 個不同的字 → 不直接列潛在客戶，送人工確認（2026-11-03 台灣 500 家試跑）
 signal_words = ["代工", "精密加工", "加工廠", "委託加工", "受託加工", "加工服務", "車銑加工", "CNC加工", "CNC 加工",
-                "machining service", "machining services", "contract manufacturing", "subcontract"]
+                "machining service", "machining services", "contract manufacturing", "subcontract",
+                # 日文、法文（2026-11-04 全球試跑：日本鑄件、鍍鉻、零件加工廠被當成做機器）
+                "部品加工", "受託加工", "切削加工", "板金加工", "鋳造", "鋳物", "めっき", "試作加工",
+                "sous-traitance", "sous-traitant", "usinage", "décolletage"]
+min_hits = 2                    # 猜的，可調整
+
+[service]
+# 安裝、保養、維修商：服務字 >= min_hits，而且網站上沒有任何製造字 → 送人工（2026-11-04 全球試跑：法國空調安裝商）
+signal_words = ["installation", "installateur", "entretien", "dépannage", "maintenance", "servicing", "repair",
+                "installer", "安裝工程", "保養", "維修", "設置工事", "メンテナンス", "修理"]
+maker_words = ["manufacture", "manufacturer", "manufacturing", "manufactured", "fabricant", "fabrication", "usine",
+               "製造", "生產", "工廠", "メーカー", "工場"]
 min_hits = 2                    # 猜的，可調整
 
 [self]

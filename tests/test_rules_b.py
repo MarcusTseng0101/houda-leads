@@ -185,3 +185,28 @@ def test_keyword_ignored_for_one_language(cfg):
     t = [extract.PageText("u", "Fabrication de machines. Sheet metal fabrication.")]
     assert classify.classify(t, inds, cfg, lang="en").hits == ["fabrication", "sheet metal"]
     assert classify.classify(t, inds, cfg, lang="fr").hits == ["sheet metal"]
+
+
+
+# ── 2026-11-04 全球試跑抽查後的修正 ──
+
+def test_japanese_for_use_suffix_is_a_mention(cfg):
+    inds = [Industry("機械", (Keyword("工作機械", False, True, "ja"), Keyword("産業機械", False, True, "ja")))]
+    t = [extract.PageText("u", "工作機械や産業機械用の鋳物を製造しています。")]
+    c = classify.classify(t, inds, cfg, lang="ja")
+    assert c.industry == "" and c.mentions.get("機械")
+    t = [extract.PageText("u", "産業機械の部品を加工しています。")]
+    assert classify.classify(t, inds, cfg, lang="ja").industry == ""
+
+
+def test_japanese_use_words_are_not_the_for_suffix(cfg):
+    inds = [Industry("機械", (Keyword("工作機械", False, True, "ja"), Keyword("専用機", False, True, "ja")))]
+    t = [extract.PageText("u", "当社は工作機械を使用した専用機を設計・製造しています。")]
+    c = classify.classify(t, inds, cfg, lang="ja")
+    assert c.industry == "機械" and set(c.hits) == {"工作機械", "専用機"}
+
+
+def test_installer_needs_no_maker_words(cfg):
+    assert channel.service_signal("Installation, entretien et dépannage de climatisation.", cfg) != []
+    assert channel.service_signal("Fabricant de pompes à chaleur : installation et entretien.", cfg) == []
+    assert channel.service_signal("We manufacture chillers. Installation and maintenance.", cfg) == []

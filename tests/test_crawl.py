@@ -46,3 +46,22 @@ def test_page_cap(cfg):
     f, c = fetcher(cfg, calls, max_pages=2)
     pages, _ = crawl.crawl_site(f, "https://acme.example.tw/", c)
     assert len(pages) == 2
+
+
+
+def test_share_links_are_not_followed(cfg):
+    from houda_leads import crawl
+
+    class F:
+        def __init__(self):
+            self.asked = []
+
+        def get(self, url):
+            self.asked.append(url)
+            return ('<html><body><a href="/contact/?share=linkedin">Contact</a>'
+                    '<a href="/contact/">Contact us</a></body></html>')
+
+    f = F()
+    crawl.crawl_site(f, "https://www.x.example/", cfg)
+    assert "https://www.x.example/contact/?share=linkedin" not in f.asked
+    assert "https://www.x.example/contact/" in f.asked

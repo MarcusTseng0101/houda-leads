@@ -98,6 +98,7 @@ def classify(texts: list[PageText], industries: list[Industry], cfg: dict, hints
     markers, lookback = list(c["application_markers"]) + c.get(f"application_markers_{lang}", []), int(c["application_lookback"])
     after_markers, lookahead = list(c.get("application_after_markers", [])), int(c.get("application_lookahead", 0))
     after_markers += c.get(f"application_after_markers_{lang}", [])
+    suffix_re = re.compile(c[f"application_suffix_regex_{lang}"]) if c.get(f"application_suffix_regex_{lang}") else None
     variants = c.get("text_variants", {})
     ignore = {w.lower() for w in c.get("ignore_keywords_by_lang", {}).get(lang, [])}   # 在這個語言是一般用字
     found: dict[str, list[tuple[str, int, str, int]]] = {}   # 產業 → [(關鍵字, 頁序, 網址, 位置)]（做什麼）
@@ -116,7 +117,8 @@ def classify(texts: list[PageText], industries: list[Industry], cfg: dict, hints
                 if not ps:
                     continue
                 own = [p for p in ps if not in_application_context(low, p, markers, lookback,
-                                                                     after_markers, lookahead, len(kw.text))]
+                                                                     after_markers, lookahead, len(kw.text))
+                       and not (suffix_re and suffix_re.match(low, p + len(kw.text)))]
                 if own:
                     found.setdefault(ind.name, []).append((kw.text, pi, t.url, own[0]))
                 elif kw.text not in mentioned.get(ind.name, []):

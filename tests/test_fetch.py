@@ -153,3 +153,12 @@ def test_search_drops_denied_domains_and_is_cached(cfg, tmp_path):
     assert f.search("acme 12345678", 8) == ["https://www.acme.com.tw/"]
     assert f.search("acme 12345678", 8) == ["https://www.acme.com.tw/"]     # 第二次從快取
     assert len(seen) == 1 and f.searches == 1 and f.denied_requests == 0
+
+
+
+def test_offline_mode_never_touches_network(cfg, tmp_path):
+    f, calls, _ = make(cfg, ok, tmp_path=tmp_path)
+    f.offline = True
+    with pytest.raises(fetch.SiteUnreachable):
+        f.get("https://example.tw/a")
+    assert calls == []

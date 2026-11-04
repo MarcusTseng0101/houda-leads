@@ -43,6 +43,7 @@ def _region_partners(R: rules.Rules, region: str) -> str:
 def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
     meta, pages = site["meta"], site["pages"]
     name, tax_id, url = meta.get("公司名稱", ""), meta.get("統編", ""), meta.get("url", "")
+    # reclassify：官網是之前找官網時確認過的（用英文名＋電話等），沿用那次的結果
     texts = [extract.PageText(p.url, extract.visible_text(p.html)) for p in pages]          # 整頁（含頁尾）
     content = [extract.PageText(p.url, extract.content_text(p.html)) for p in pages]        # 分類用（去掉選單）
     joined = " ".join(t.text for t in texts)
@@ -59,6 +60,8 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
         confirm = extract.site_confirmation(texts, tax_id, n, label)
         if confirm != "未確認":
             break
+    if meta.get("官網確認") and confirm == "未確認":
+        confirm = meta["官網確認"]
     codes = re.findall(r"(?:^|、)(\d{2,5})", meta.get("工廠主要產品", ""))
     hints = R.hinted_industries(country, codes)
     langs = cfg["classify"].get("lang_by_country", {})
@@ -66,6 +69,7 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
     sig = channel.channel_signal(joined, cfg, R.competitor_brands)
     comp = channel.component_signal(" ".join(t.text for t in content), cfg)
     sub = channel.subcontract_signal(" ".join(t.text for t in content), cfg)
+    svc = channel.service_signal(" ".join(t.text for t in content), cfg)
     rec = match.recommend(cls.industry, R, cfg, sig, bool(comp)) if cls.industry else None
     cust = channel.match_entry(name, R.customers)
     partner = channel.match_entry(name, R.channel_partners)
@@ -88,6 +92,9 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
         notes.append("對方網站提到自家公司：可能是既有客戶或在賣我們產品的通路，聯絡前先確認")
 
     role = rec.role if rec else (match.ROLE_COMPONENT if comp else "")
+    if svc and role == match.ROLE_MAKER:
+        review = True
+        notes.append("看起來是安裝／保養／維修商（" + "、".join(svc) + "），網站上沒有「製造」：可能是裝別人的設備，請業務確認")
     if sub and role == match.ROLE_MAKER:
         review = True
         notes.append("看起來是加工代工廠（" + "、".join(sub) + "）：網站上的 CNC／自動化可能是自己工廠的設備，不是產品，請業務確認")
@@ -406,6 +413,40 @@ def cmd_run(a) -> int:
     return 0
 
 
+def cmd_reclassify(a) -> int:
+    """用快取重新分類之前跑過的結果（不連網）：比對規則改之前、之後。沒有官網的列照抄。"""
+    from . import crawl, fetch
+    cfg = config.load(Path(a.config) if a.config else None)
+    R = rules.load(config.ROOT / "inputs", cfg)
+    fetcher = fetch.Fetcher(cfg, cache_dir=config.ROOT / "data" / "cache")
+    fetcher.offline = True
+    today = dt.date.today()
+    for d in a.runs:
+        d = Path(d)
+        with (d / "leads.csv").open(encoding="utf-8-sig", newline="") as f:
+            old = list(csv.DictReader(f))
+        rows = []
+        for r in old:
+            if not r.get("官網"):
+                rows.append(r)
+                continue
+            pages, problems = crawl.crawl_site(fetcher, r["官網"], cfg)
+            meta = {"公司名稱": r["公司名稱"], "統編": r["統編"].lstrip("'"), "國家": r.get("國家", ""),
+                    "url": r["官網"], "工廠主要產品": r.get("工廠主要產品(登記)", ""), "官網確認": r.get("官網確認", "")}
+            row = process({"meta": meta, "pages": pages}, R, cfg, today)
+            if not pages:
+                row["分流"], row["需人工確認(Y/N)"] = "需人工確認", "Y"
+            rows.append(row)
+        out = Path(str(d) + a.suffix)
+        run = json.loads((d / "run.json").read_text(encoding="utf-8")) if (d / "run.json").exists() else {}
+        run["重新分類"] = f"{dt.datetime.now().isoformat(timespec='seconds')} 只用快取（{d}）"
+        export.write(rows, out, cfg, run)
+        (out / "run.json").write_text(json.dumps(run, ensure_ascii=False, indent=1), encoding="utf-8")
+        print(f"{d} → {out}：{len(rows)} 家", flush=True)
+    print(f"沒有快取、跳過的請求：{fetcher.requests}")
+    return 0
+
+
 def cmd_merge(a) -> int:
     """好幾國的 run 結果合成一份全球 Excel（out/global_leads.xlsx）。"""
     cfg = config.load()
@@ -491,13 +532,18 @@ def main(argv=None) -> int:
     ls.add_argument("--out", required=True)
     gc = sub.add_parser("gold-csv", help="業務標好的 xlsx → gold/labels.csv")
     gc.add_argument("--xlsx", required=True)
+    rc = sub.add_parser("reclassify", help="只用快取重新分類之前跑過的結果（不連網）")
+    rc.add_argument("--runs", nargs="+", required=True)
+    rc.add_argument("--suffix", default="_re", help="輸出資料夾＝原資料夾＋這個字尾")
+    rc.add_argument("--config", help="用另一份設定檔（比對規則改之前用）")
     mg = sub.add_parser("merge", help="好幾國的結果合成一份全球 Excel")
     mg.add_argument("--runs", nargs="+", required=True, help="各國 run 的 --out 資料夾")
     mg.add_argument("--out", required=True)
     gc.add_argument("--out", default=str(config.ROOT / "gold" / "labels.csv"))
     a = p.parse_args(argv)
     try:
-        return {"run": cmd_run, "eval": cmd_eval, "label-sheet": cmd_label_sheet, "gold-csv": cmd_gold_csv, "merge": cmd_merge}[a.cmd](a)
+        return {"run": cmd_run, "eval": cmd_eval, "label-sheet": cmd_label_sheet, "gold-csv": cmd_gold_csv, "merge": cmd_merge,
+                "reclassify": cmd_reclassify}[a.cmd](a)
     except NotYet as ex:
         print(f"尚未實作：{ex}", file=sys.stderr)
         return 2

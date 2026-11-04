@@ -69,6 +69,18 @@ def subcontract_signal(text: str, cfg: dict) -> list[str]:
     return hits if len(hits) >= int(c["min_hits"]) else []
 
 
+def service_signal(text: str, cfg: dict) -> list[str]:
+    """安裝、保養、維修商：服務的字出現至少 min_hits 個，而且完全沒有「製造」的字（製造商也常寫安裝與維護，
+    所以兩個都要看）。2026-11-04 全球試跑：法國空調安裝商 Genin Froid、Technic Froid。"""
+    c = cfg.get("service")
+    if not c:
+        return []
+    if any(find_alias(text, w) >= 0 for w in c["maker_words"]):
+        return []
+    hits = [w for w in c["signal_words"] if find_alias(text, w) >= 0]
+    return hits if len(hits) >= int(c["min_hits"]) else []
+
+
 def component_signal(text: str, cfg: dict) -> list[str]:
     """元件／材料供應商：出現至少 min_hits 個不同的元件字眼才算（只有 1 個太容易誤中）。"""
     c = cfg["component"]

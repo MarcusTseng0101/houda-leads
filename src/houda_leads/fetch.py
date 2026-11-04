@@ -51,6 +51,7 @@ class Fetcher:
         f = cfg["fetch"]
         self.cfg = cfg
         self.searches = 0
+        self.offline = False           # True：只讀快取，沒快取就當抓不到（reclassify 用）
         self.interval = float(f["min_interval_seconds"])
         self.ua = f["user_agent"]
         # 不讓 httpx 自動跟轉址：自動跟的話，轉到被禁止的網域時請求已經送出去了
@@ -145,6 +146,8 @@ class Fetcher:
         cp = self._cache_path(url)
         if cp and cp.exists():
             return cp.read_text(encoding="utf-8")
+        if self.offline:
+            raise SiteUnreachable(f"快取裡沒有：{url}")
         rp = self._robots_for(url)
         if not rp.can_fetch(self.ua, url):
             raise (SiteUnreachable if getattr(rp, "unreachable", False) else RobotsDisallowed)(url)
