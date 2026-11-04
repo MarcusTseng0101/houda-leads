@@ -81,6 +81,17 @@ def service_signal(text: str, cfg: dict) -> list[str]:
     return hits if len(hits) >= int(c["min_hits"]) else []
 
 
+def material_signal(registry_text: str, cfg: dict) -> list[str]:
+    """化學、樹脂、塗料等材料廠：登記的事業內容有材料字、而且沒有任何設備字。
+    網站常寫材料「用在」蓄電池、RFID，會被當成做那些東西（2026-11-04 全球試跑：日本化學廠）。"""
+    c = cfg.get("material")
+    if not c or not registry_text:
+        return []
+    if any(find_alias(registry_text, w) >= 0 for w in c["equipment_words"]):
+        return []
+    return [w for w in c["signal_words"] if find_alias(registry_text, w) >= 0]
+
+
 def component_signal(text: str, cfg: dict) -> list[str]:
     """元件／材料供應商：出現至少 min_hits 個不同的元件字眼才算（只有 1 個太容易誤中）。"""
     c = cfg["component"]

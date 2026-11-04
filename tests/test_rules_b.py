@@ -210,3 +210,32 @@ def test_installer_needs_no_maker_words(cfg):
     assert channel.service_signal("Installation, entretien et dépannage de climatisation.", cfg) != []
     assert channel.service_signal("Fabricant de pompes à chaleur : installation et entretien.", cfg) == []
     assert channel.service_signal("We manufacture chillers. Installation and maintenance.", cfg) == []
+
+
+
+# ── 2026-11-04 第二輪：材料廠、登記類別清單、自用設備、檢測服務 ──
+
+def test_registry_category_list_on_page_is_not_a_product(cfg):
+    inds = [Industry("量測", (Keyword("量測", False, True, "zh"), Keyword("儀器", False, True, "zh")))]
+    t = [extract.PageText("u", "工廠登記：275量測、導航、控制設備及鐘錶、277光學儀器及設備 麥寮工廠")]
+    assert classify.classify(t, inds, cfg, lang="zh").industry == ""
+    t = [extract.PageText("u", "本公司生產精密量測儀器，提供 300 組量測方案。")]
+    assert classify.classify(t, inds, cfg, lang="zh").industry == "量測"
+
+
+def test_purchased_equipment_is_a_mention(cfg):
+    inds = [Industry("機械", (Keyword("cnc", True, True, "en"), Keyword("hydraulic press", True, True, "en")))]
+    # 買來的 CNC 只算提及；離標記太遠（超過 lookback）的 hydraulic press 照算，剩 1 個字 → 主程式送人工
+    t = [extract.PageText("u", "We grew by the purchase of a CNC plasma cutter and a hydraulic press.")]
+    c = classify.classify(t, inds, cfg, lang="en")
+    assert "cnc" not in c.hits and c.mentions
+
+
+def test_material_maker_from_registry_text(cfg):
+    assert channel.material_signal("E:製造業、機能・化学・樹脂製品の製造・販売", cfg) != []
+    assert channel.material_signal("E:製造業、化学装置の製造", cfg) == []
+    assert channel.material_signal("", cfg) == []
+
+
+def test_testing_service_without_maker_words(cfg):
+    assert channel.service_signal("Electrical inspection and testing services for landlords.", cfg) != []

@@ -37,7 +37,9 @@ min_hits_for_lead = 2
 evidence_window = 40            # 證據前後各取幾個字（猜的，可調整）
 # 關鍵字前面（同一句、最多 application_lookback 個字）出現這些字 → 說的是客戶的產業，只算「提及」
 application_markers = ["應用", "適用", "用於", "客戶", "application", "applications", "applied", "used in", "for use",
-                       "參展", "meet us at", "visit us at"]
+                       "參展", "meet us at", "visit us at",
+                       # 買來自己用的設備（2026-11-04 全球試跑：EJ Engineering「purchase of a CNC Plasma Cutter」）
+                       "purchase of", "purchased a", "invested in", "investment in", "acquired a"]
 # 關鍵字「後面」（同一句、最多 application_lookahead 個字）出現這些字 → 是展覽名稱，只算「提及」
 # （台灣試跑：德淵的「Industrial Automation Exhibition」被算成做自動化設備）
 application_after_markers = ["展覽", "展會", "大展", "exhibition", "expo", "trade show", "trade fair"]
@@ -53,6 +55,9 @@ application_suffix_regex_ja = "[^。！？；]{0,15}?(?:(?<![使利採活応信�
 # 網站用哪個語言的關鍵字比（英數字的字每個語言都比）
 lang_by_country = { TW = "zh", CN = "zh", HK = "zh", JP = "ja", FR = "fr", default = "en" }
 application_lookback = 30       # 猜的，可調整
+# 網站上貼的台灣工廠登記類別清單（三碼＋類別名，連續 2 個以上）：不是產品說明，分類前拿掉
+# （2026-11-04 全球試跑：台因的聯絡頁列「275量測、導航、控制設備及鐘錶、277光學儀器及設備」）
+ignore_text_regex = ["(?:(?<![0-9.,])[0-3][0-9]{2}[\u4e00-\u9fff][\u4e00-\u9fff、及]{1,24}[、 ]?){2,}"]
 # 英文關鍵字在別的語言是一般用字：法文 fabrication＝製造（每個法國網站都有），不能當成金屬加工（法國試跑，2026-11-03）
 ignore_keywords_by_lang = { fr = ["fabrication"] }
 # 異體字（只能等長）：網站用的字 → 關鍵字表用的字
@@ -61,7 +66,7 @@ text_variants = { "板金" = "鈑金", "臺" = "台", "線束" = "線組" }
 [component]
 # 元件／材料供應商：出現至少 min_hits 個不同的字 → 不當設備製造商（產業表：「IC或記憶體元件公司不一定直接使用端子台」）
 signal_words = ["二極體", "二極管", "電晶體", "MOSFET", "IGBT", "肖特基", "閘流體", "晶閘管", "整流器件",
-                "記憶體", "DRAM", "矽晶圓", "多晶矽", "單晶棒",          # 2026-11-04：記憶體、晶圓廠
+                "記憶體", "DRAM", "矽晶圓", "多晶矽", "單晶棒", "多晶棒", "晶棒",   # 2026-11-04：記憶體、晶圓廠
                 "被動元件", "電阻器", "電容器", "晶圓代工", "IC設計", "diode", "transistor", "thyristor"]
 min_hits = 2                    # 猜的，可調整
 
@@ -77,10 +82,20 @@ min_hits = 2                    # 猜的，可調整
 [service]
 # 安裝、保養、維修商：服務字 >= min_hits，而且網站上沒有任何製造字 → 送人工（2026-11-04 全球試跑：法國空調安裝商）
 signal_words = ["installation", "installateur", "entretien", "dépannage", "maintenance", "servicing", "repair",
-                "installer", "安裝工程", "保養", "維修", "設置工事", "メンテナンス", "修理"]
-maker_words = ["manufacture", "manufacturer", "manufacturing", "manufactured", "fabricant", "fabrication", "usine",
+                "installer", "安裝工程", "保養", "維修", "設置工事", "メンテナンス", "修理",
+                # 檢測服務（2026-11-04 全球試跑：Electrical Testing Surveyors）
+                "inspection", "inspections", "testing services", "surveys", "contrôle", "vérification",
+                "檢測服務", "點檢", "点検"]
+# 不放單獨的 manufacturing：檢測、安裝商常寫客戶是「manufacturing plant」（2026-11-04：Electrical Testing Surveyors）
+maker_words = ["manufacture", "manufacturer", "manufactured", "fabricant", "fabrication", "usine",
                "製造", "生產", "工廠", "メーカー", "工場"]
 min_hits = 2                    # 猜的，可調整
+
+[material]
+# 化學、材料廠：登記的事業內容有這些字、而且沒有 equipment_words → 送人工（2026-11-04 全球試跑：クレハ、藤倉化成）
+signal_words = ["化学", "化學", "樹脂", "塗料", "化成", "素材", "原料", "合成", "chemical", "chemicals",
+                "plastics", "rubber", "paint", "coating"]
+equipment_words = ["機械", "機器", "装置", "裝置", "設備", "器具", "機具", "machinery", "equipment", "apparatus"]
 
 [self]
 # 自己公司的名稱：對方網站提到 → 可能是既有客戶或在賣我們產品的通路

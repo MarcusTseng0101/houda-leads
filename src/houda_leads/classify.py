@@ -51,6 +51,13 @@ def normalize(text: str, variants: dict[str, str]) -> str:
     return low
 
 
+def blank_patterns(low: str, patterns: list[str]) -> str:
+    """把符合的片段換成等長空白：位置不變，證據照樣從原文取，只是這段不算命中。"""
+    for pat in patterns:
+        low = re.sub(pat, lambda m: " " * len(m.group(0)), low)
+    return low
+
+
 def in_application_context(low: str, pos: int, markers: list[str], lookback: int,
                            after_markers: list[str] = (), lookahead: int = 0, length: int = 0) -> bool:
     """往回看到句子邊界（最多 lookback 個字），中間有應用語境的字就算；
@@ -104,7 +111,7 @@ def classify(texts: list[PageText], industries: list[Industry], cfg: dict, hints
     found: dict[str, list[tuple[str, int, str, int]]] = {}   # 產業 → [(關鍵字, 頁序, 網址, 位置)]（做什麼）
     mentioned: dict[str, list[str]] = {}
     for pi, t in enumerate(texts):
-        low = normalize(t.text, variants)
+        low = blank_patterns(normalize(t.text, variants), c.get("ignore_text_regex", []))
         for ind in industries:
             for kw in ind.keywords:
                 if not kw.ascii_word and kw.lang != lang:   # 中文的字不比日文網站，反之亦然

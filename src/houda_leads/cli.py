@@ -70,6 +70,7 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
     comp = channel.component_signal(" ".join(t.text for t in content), cfg)
     sub = channel.subcontract_signal(" ".join(t.text for t in content), cfg)
     svc = channel.service_signal(" ".join(t.text for t in content), cfg)
+    mat = channel.material_signal(meta.get("工廠主要產品", ""), cfg)
     rec = match.recommend(cls.industry, R, cfg, sig, bool(comp)) if cls.industry else None
     cust = channel.match_entry(name, R.customers)
     partner = channel.match_entry(name, R.channel_partners)
@@ -92,6 +93,9 @@ def process(site: dict, R: rules.Rules, cfg: dict, today: dt.date) -> dict:
         notes.append("對方網站提到自家公司：可能是既有客戶或在賣我們產品的通路，聯絡前先確認")
 
     role = rec.role if rec else (match.ROLE_COMPONENT if comp else "")
+    if mat and role == match.ROLE_MAKER:
+        review = True
+        notes.append("登記的事業內容是材料（" + "、".join(mat) + "），沒有設備：網站上的設備字可能是材料的用途，請業務確認")
     if svc and role == match.ROLE_MAKER:
         review = True
         notes.append("看起來是安裝／保養／維修商（" + "、".join(svc) + "），網站上沒有「製造」：可能是裝別人的設備，請業務確認")
