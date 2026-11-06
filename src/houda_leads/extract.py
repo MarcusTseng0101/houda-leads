@@ -98,8 +98,13 @@ def links(html: str, base_url: str) -> list[tuple[str, str]]:
     out = []
     for a in tree.css("a[href]"):
         href = (a.attributes.get("href") or "").strip()
-        if href:
-            out.append((urljoin(base_url, href), _collapse(a.text(separator=" "))))
+        if not href:
+            continue
+        try:
+            full = urljoin(base_url, href)
+        except ValueError:     # 壞掉的連結（http://[forminator_form id=1286]）：跳過，不讓整個 run 停掉（2026-11-07 英國全量）
+            continue
+        out.append((full, _collapse(a.text(separator=" "))))
     return out
 
 

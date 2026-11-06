@@ -65,3 +65,9 @@ def test_share_links_are_not_followed(cfg):
     crawl.crawl_site(f, "https://www.x.example/", cfg)
     assert "https://www.x.example/contact/?share=linkedin" not in f.asked
     assert "https://www.x.example/contact/" in f.asked
+
+
+def test_broken_link_is_skipped():
+    from houda_leads import extract
+    html = '<a href="http://[forminator_form id=1286]">x</a><a href="/contact/">Contact</a>'
+    assert extract.links(html, "https://www.x.example/") == [("https://www.x.example/contact/", "Contact")]
