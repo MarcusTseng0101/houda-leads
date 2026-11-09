@@ -175,3 +175,13 @@ def test_export_bom_and_formula_escape(tmp_path, cfg):
 def test_linkedin_link_is_search_only():
     u = export.linkedin_search_link("範例 公司")
     assert u.startswith("https://www.linkedin.com/search/results/companies/?keywords=")
+
+
+def test_xlsx_drops_control_characters(tmp_path, cfg):
+    from openpyxl import load_workbook
+    from houda_leads import export
+    rows = [{"分流": "潛在客戶", "公司名稱": "A", "證據原文": "PLC 控制"}]
+    export.write(rows, tmp_path, cfg, {})
+    ws = load_workbook(tmp_path / "leads.xlsx")["潛在客戶"]
+    col = [c.value for c in ws[1]].index("證據原文") + 1
+    assert ws.cell(2, col).value == "PLC 控制"

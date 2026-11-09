@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from openpyxl import Workbook
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Font
 
 FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
@@ -35,6 +36,11 @@ def csv_safe(v) -> str:
     return "'" + s if s.startswith(FORMULA_START) else s
 
 
+def xlsx_safe(v) -> str:
+    """Excel 不收控制字元：網頁抓到亂碼時拿掉，不讓整個 run 在最後寫檔時停掉（2026-11-09 英國全量）。CSV 照原樣。"""
+    return ILLEGAL_CHARACTERS_RE.sub("", "" if v is None else str(v))
+
+
 def write(rows: list[dict], out: Path, cfg: dict, run_log: dict) -> None:
     out.mkdir(parents=True, exist_ok=True)
     cols = columns(cfg)
@@ -57,7 +63,7 @@ def write(rows: list[dict], out: Path, cfg: dict, run_log: dict) -> None:
             ws.append([None] * len(cols))
             for j, c in enumerate(cols, start=1):
                 cell = ws.cell(ws.max_row, j)
-                cell.value = "" if r.get(c) is None else str(r.get(c))
+                cell.value = xlsx_safe(r.get(c))
                 cell.data_type = "s"           # 一律當文字：不讓 "=..." 變成公式
         ws.freeze_panes = "C2"
         ws.auto_filter.ref = ws.dimensions
@@ -79,7 +85,7 @@ def _sheet(wb, name: str, cols: list[str], rows: list[dict]):
     for i, r in enumerate(rows, start=2):
         for j, c in enumerate(cols, start=1):
             cell = ws.cell(i, j)
-            cell.value = "" if r.get(c) is None else str(r.get(c))
+            cell.value = xlsx_safe(r.get(c))
             cell.data_type = "s"               # 一律當文字：不讓 "=..." 變成公式
     ws.freeze_panes = "C2"
     ws.auto_filter.ref = ws.dimensions
