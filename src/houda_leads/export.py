@@ -59,10 +59,10 @@ def write(rows: list[dict], out: Path, cfg: dict, run_log: dict) -> None:
         ws.append(cols)
         for c in ws[1]:
             c.font = Font(bold=True)
-        for r in (x for x in rows if x.get("分流") == name):
-            ws.append([None] * len(cols))
+        # 自己記列號：每格都問 ws.max_row 會掃整張表，英國 9,579 列要好幾小時（2026-11-09 英國全量）
+        for i, r in enumerate((x for x in rows if x.get("分流") == name), start=2):
             for j, c in enumerate(cols, start=1):
-                cell = ws.cell(ws.max_row, j)
+                cell = ws.cell(i, j)
                 cell.value = xlsx_safe(r.get(c))
                 cell.data_type = "s"           # 一律當文字：不讓 "=..." 變成公式
         ws.freeze_panes = "C2"
