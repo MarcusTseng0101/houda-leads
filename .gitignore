@@ -1,5 +1,5 @@
-data/
-out/
+/data
+/out
 .env
 BUDGET_OK
 gold/

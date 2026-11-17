@@ -18,9 +18,9 @@ grep -rlE "^\s*(import|from)\s+anthropic" src | grep -v "src/houda_leads/llm.py"
   && die "arch-2" "anthropic 只能出現在 llm.py"
 grep -rlE "^\s*(import|from)\s+httpx" src | grep -v "src/houda_leads/fetch.py" \
   && die "arch-2" "httpx 只能出現在 fetch.py"
-grep -rnE "(HD|FTB|TS|HB|HI|HA)-[0-9]|端子台|配電盤|電源供應器" src \
+grep -rnE --exclude-dir=__pycache__ "(HD|FTB|TS|HB|HI|HA)-[0-9]|端子台|配電盤|電源供應器" src \
   && die "arch-3" "產業名稱／型號／關鍵字寫死在 src/（只能在 inputs/*.csv）"
-grep -rn "linkedin" src | grep -vE "src/houda_leads/(fetch|export)\.py" \
+grep -rn --exclude-dir=__pycache__ "linkedin" src | grep -vE "src/houda_leads/(fetch|export)\.py" \
   && die "linkedin" "只有 fetch.py（禁止清單）和 export.py（手動搜尋連結）可以提到 linkedin"
 
 grep -rnE "sk-ant-[A-Za-z0-9]" --exclude-dir=.git --exclude-dir=.venv . && die "secret" "repo 裡有 API key"
@@ -54,9 +54,14 @@ if [ "$stage" = final ]; then
   [ -f out/eval.json ] && py - <<'EOF' || die "eval-threshold" "沒達到成功定義（PROMPT.md「唯一的成功定義」）"
 import json, sys
 e = json.load(open("out/eval.json", encoding="utf-8"))
-ok = e["industry_accuracy"] >= 0.80 and e["high_priority_precision"] >= 0.70 \
+# 2026-11-02 使用者同意改（PROMPT.md 成功定義）：以推薦名單的準確度為門檻，產業判對當參考
+ok = e["high_priority_precision"] >= 0.70 and e["lead_precision"] >= 0.70 \
      and e["evidence_not_in_source"] == 0 and e["denied_domain_requests"] == 0
-print(json.dumps(e, ensure_ascii=False, indent=1)); sys.exit(0 if ok else 1)
+print(json.dumps(e, ensure_ascii=False, indent=1))
+if e["industry_accuracy_judged"] < 0.60:
+    print(f"WARNING [industry]: 產業判對（只算工具有判的）{e['industry_accuracy_judged']} < 0.60，不擋，但分類還要改進",
+          file=sys.stderr)
+sys.exit(0 if ok else 1)
 EOF
 fi
 

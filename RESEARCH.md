@@ -111,3 +111,24 @@
 - 經濟部商工行政資料開放平臺：data.gcis.nat.gov.tw（含 swagger）；產業發展署開放資料：ida.gov.tw（PRO=listOpenData）、service.moea.gov.tw（工廠登記：產業類別、主要產品，每季更新）
 - OWASP LLM01:2025 Prompt Injection：genai.owasp.org/llmrisk/llm01-prompt-injection
 - 競品：clay.com/blog/series-d、origami.chat、marketbetter.ai（2026 年 8 月價格）
+
+## 國外客戶（2026-10-20 補：使用者「客戶不限國內」）
+
+### 名單來源（免費、官方，使用條款要各自看過）
+| 來源 | 國家 | 能篩什麼 | 注意 |
+|---|---|---|---|
+| gBizINFO REST API（經濟產業省） | 日本 | 法人番号、商號、地址、業種 | 要申請 API token（免費）；網站多半日文，關鍵字表沒有日文 |
+| Companies House API | 英國 | SIC 碼（例如 27120 配電與控制設備製造） | 免費 key；只有登記資料，沒有官網，要另外找 |
+| Wikidata SPARQL | 全球 | 產業（P452）、官網（P856）、國家 | CC0；只收得到比較有名的公司 |
+| 展覽參展商名單（electronica、SPS 等） | 全球 | 展區／產品類別 | 多數網站條款禁止大量下載；業務手動匯出、或買主辦方名單 |
+
+### 寄信的法律（提醒，不是法律意見）
+- 多數歐盟國家：GDPR 6(1)(f) 正當利益＋前言 47，B2B 寄到業務信箱可以，要附退訂、留正當利益評估
+- 德國 UWG §7、奧地利 TKG §174：B2B 也要事前同意（德國會收到 Abmahnung）
+- 美國 CAN-SPAM：退訂制；英國 PECR：公司信箱可寄、附退訂
+- 韓國：事前同意；日本、加拿大、澳洲：原則上要同意，但公開的業務信箱有例外 → 標「需確認」
+- 實作：`inputs/country_rules.csv` 的「外聯規則」欄，輸出每列都帶
+
+### 代理商衝突
+厚達公開的代理：歐洲 Comet、美國 BlockMaster、日本 ABA、中國逸特（獨家）。國外的潛在客戶，
+工具的建議跟進一律寫「交給該區代理」；國外的潛在通路商，備註提醒先看代理合約（可能獨家）。

@@ -1,0 +1,201 @@
+# houda-leads 設定。標「猜的」的數字都可以調，PROGRESS.md 有完整清單。
+# 換一家公司用這個工具時，要改的是這個檔案和 inputs/，不是 src/。
+
+[fetch]
+min_interval_seconds = 2.0      # 同一網域兩次請求的間隔（猜的，可調整）
+max_pages_per_company = 15      # 猜的，可調整；預算不夠時先砍成 8
+timeout_seconds = 20
+max_seconds_per_company = 120     # 一家最多抓幾秒（英國試跑有一家逾時累積到 730 秒）（猜的，可調整）
+user_agent = "houda-leads/0.1 (B2B prospect research; contact: info@howder-tw.com)"
+# 只跟這些字眼的連結走（同網域）
+follow_link_words = ["product", "products", "about", "contact", "產品", "關於", "聯絡", "公司簡介"]
+
+[match]
+alt_pitch_tolerance_mm = 0.5    # 同規格替代：Pitch 差距上限（猜的，可調整）
+alt_max = 5                     # 每家最多列幾個替代型號（猜的，可調整）
+spec_required_marker = "需依規格另行選型"   # 產業表裡「沒有參考型號」的寫法
+
+[roles]
+# 角色旗標：這幾類不和設備製造商一起排優先順序（產業表的「選型與開發提醒」寫明的）
+channel_industries = ["電子零件通路與貿易"]
+partner_industries = ["電子連接器、線材與EMS"]
+confirm_first_industries = ["金屬、模具與塑膠零件製造"]
+# 官網出現這些字，加上提到競品品牌，就當成通路商
+channel_signal_words = ["代理", "經銷", "通路", "distributor", "authorized dealer", "agent"]
+
+[classify]
+# 多類命中時：第一名的關鍵字數 >= 第二名的 2 倍、而且至少 2 個，才直接採用（猜的，可調整）
+dominance_ratio = 2.0
+dominance_min_hits = 2
+# 命中多類時，登記產業代碼指向的那一類，命中數至少要是第一名的這個比例才採用（猜的，可調整）
+hint_min_share = 0.5
+# 「泛用」產業：只說明產品是機器，沒說是給哪個產業用的。命中多類、靠登記代碼決定時，
+# 如果另一個有提示、命中也夠的產業說得出用途（例如半導體設備），選那一個（2026-11-02，gold 看到半導體設備廠被歸成自動化）
+generic_industries = ["工業自動化與機械設備"]
+# 列成潛在客戶至少要中幾個不同的關鍵字（台灣、英國、日本試跑：只中 1 個的 7 家裡 5 家錯、1 家對）（猜的，可調整）
+min_hits_for_lead = 2
+evidence_window = 40            # 證據前後各取幾個字（猜的，可調整）
+# 關鍵字前面（同一句、最多 application_lookback 個字）出現這些字 → 說的是客戶的產業，只算「提及」
+application_markers = ["應用", "適用", "用於", "客戶", "application", "applications", "applied", "used in", "for use",
+                       "參展", "meet us at", "visit us at",
+                       # 買來自己用的設備（2026-11-04 全球試跑：EJ Engineering「purchase of a CNC Plasma Cutter」）
+                       "purchase of", "purchased a", "invested in", "investment in", "acquired a"]
+# 關鍵字「後面」（同一句、最多 application_lookahead 個字）出現這些字 → 是展覽名稱，只算「提及」
+# （台灣試跑：德淵的「Industrial Automation Exhibition」被算成做自動化設備）
+application_after_markers = ["展覽", "展會", "大展", "exhibition", "expo", "trade show", "trade fair"]
+application_lookahead = 30      # 猜的，可調整
+# 中文：「引進 CNC」「增設機械手臂自動化生產線」說的是自己工廠用的設備，不是做這種設備（台灣 500 家試跑：代工廠被當成自動化設備商）
+# 不放「使用」「採用」：設備商介紹自己的機器也這樣寫（本機採用 PLC 控制）（2026-11-03）
+application_markers_zh = ["引進", "導入", "購置", "添購", "增設", "配置", "擁有", "投資"]
+# 日文：「半導体製造装置向け部品」「測定器を導入」說的是客戶或自己買的設備（日本試跑學到的）
+application_after_markers_ja = ["向け", "を導入", "導入して", "用途"]
+# 日文：關鍵字後面 15 個字內（不跨句）接「用」「の部品」「部品」「に必要」→ 說的是賣給誰（工作機械用鋳物、産業機械の部品）
+# 使用、利用、採用、活用、応用、専用…的「用」不算（2026-11-04 全球試跑：日本零件、鑄件廠被當成做機器）
+application_suffix_regex_ja = "[^。！？；]{0,15}?(?:(?<![使利採活応信費作運専雇])用(?!途)|の部品|部品|に必要)"
+# 網站用哪個語言的關鍵字比（英數字的字每個語言都比）
+lang_by_country = { TW = "zh", CN = "zh", HK = "zh", JP = "ja", FR = "fr", default = "en" }
+application_lookback = 30       # 猜的，可調整
+# 網站上貼的台灣工廠登記類別清單（三碼＋類別名，連續 2 個以上）：不是產品說明，分類前拿掉
+# （2026-11-04 全球試跑：台因的聯絡頁列「275量測、導航、控制設備及鐘錶、277光學儀器及設備」）
+ignore_text_regex = ["(?:(?<![0-9.,])[0-3][0-9]{2}[\u4e00-\u9fff][\u4e00-\u9fff、及]{1,24}[、 ]?){2,}"]
+# 英文關鍵字在別的語言是一般用字：法文 fabrication＝製造（每個法國網站都有），不能當成金屬加工（法國試跑，2026-11-03）
+ignore_keywords_by_lang = { fr = ["fabrication"] }
+# 異體字（只能等長）：網站用的字 → 關鍵字表用的字
+text_variants = { "板金" = "鈑金", "臺" = "台", "線束" = "線組" }
+
+[component]
+# 元件／材料供應商：出現至少 min_hits 個不同的字 → 不當設備製造商（產業表：「IC或記憶體元件公司不一定直接使用端子台」）
+signal_words = ["二極體", "二極管", "電晶體", "MOSFET", "IGBT", "肖特基", "閘流體", "晶閘管", "整流器件",
+                "記憶體", "DRAM", "矽晶圓", "多晶矽", "單晶棒", "多晶棒", "晶棒",   # 2026-11-04：記憶體、晶圓廠
+                "被動元件", "電阻器", "電容器", "晶圓代工", "IC設計", "diode", "transistor", "thyristor"]
+min_hits = 2                    # 猜的，可調整
+
+[subcontract]
+# 加工代工廠：出現至少 min_hits 個不同的字 → 不直接列潛在客戶，送人工確認（2026-11-03 台灣 500 家試跑）
+signal_words = ["代工", "精密加工", "加工廠", "委託加工", "受託加工", "加工服務", "車銑加工", "CNC加工", "CNC 加工",
+                "machining service", "machining services", "contract manufacturing", "subcontract",
+                # 日文、法文（2026-11-04 全球試跑：日本鑄件、鍍鉻、零件加工廠被當成做機器）
+                "部品加工", "受託加工", "切削加工", "板金加工", "鋳造", "鋳物", "めっき", "試作加工",
+                "sous-traitance", "sous-traitant", "usinage", "décolletage"]
+min_hits = 2                    # 猜的，可調整
+
+[service]
+# 安裝、保養、維修商：服務字 >= min_hits，而且網站上沒有任何製造字 → 送人工（2026-11-04 全球試跑：法國空調安裝商）
+signal_words = ["installation", "installateur", "entretien", "dépannage", "maintenance", "servicing", "repair",
+                "installer", "安裝工程", "保養", "維修", "設置工事", "メンテナンス", "修理",
+                # 檢測服務（2026-11-04 全球試跑：Electrical Testing Surveyors）
+                "inspection", "inspections", "testing services", "surveys", "contrôle", "vérification",
+                "檢測服務", "點檢", "点検"]
+# 不放單獨的 manufacturing：檢測、安裝商常寫客戶是「manufacturing plant」（2026-11-04：Electrical Testing Surveyors）
+maker_words = ["manufacture", "manufacturer", "manufactured", "fabricant", "fabrication", "usine",
+               "製造", "生產", "工廠", "メーカー", "工場"]
+min_hits = 2                    # 猜的，可調整
+
+[material]
+# 化學、材料廠：登記的事業內容有這些字、而且沒有 equipment_words → 送人工（2026-11-04 全球試跑：クレハ、藤倉化成）
+signal_words = ["化学", "化學", "樹脂", "塗料", "化成", "素材", "原料", "合成", "chemical", "chemicals",
+                "plastics", "rubber", "paint", "coating"]
+equipment_words = ["機械", "機器", "装置", "裝置", "設備", "器具", "機具", "machinery", "equipment", "apparatus"]
+
+[self]
+# 自己公司的名稱：對方網站提到 → 可能是既有客戶或在賣我們產品的通路
+names = ["厚達", "How Der", "Howder"]
+region = "TW"
+
+[contacts]
+retention_years = 2             # 具名窗口保存期限（猜的，可調整）
+legal_basis = "個資法19-1-7（一般可得之來源）"
+sales_mailbox_words = ["sales", "業務", "market", "order"]
+
+[columns]
+# 使用者產業表的欄位名稱（換一家公司的表，改這裡就好）
+keywords_header_first = "標準化產業"
+keywords_name = "標準化產業"
+keywords_words = "辨識關鍵字"
+products_header_first = "產業大類"
+products_industry = "產業大類"
+products_customer_types = "常見客戶／設備類型"
+products_application = "端子台應用位置"
+products_series = "參考產品系列型號"
+products_categories = "端子台類別"
+products_priority_level = "開發優先度"
+products_priority_order = "開發優先順序"
+products_note = "選型與開發提醒"
+
+[sources]
+# 工廠登記初篩：產業類別 2 碼大類（26 電子零組件、27 電腦電子光學、28 電力設備、29 機械設備）
+factory_industry_codes = ["26", "27", "28", "29"]
+# 只留公司型態（獨資、合夥多半沒有官網，也比較少自製電控）（猜的，可調整）
+org_types = ["股份有限公司"]
+
+[registries.gb]
+# Companies House 每月快照（Free Company Data Product）。SIC 2007 前兩碼：
+# 26 電腦電子光學、27 電力設備、28 機械設備（對應台灣工廠登記的 26～29）
+sic_prefixes = ["26", "27", "28"]
+company_categories = ["Private Limited Company", "Public Limited Company"]
+# 休眠、沒交帳、微型公司多半沒有官網，先排除（猜的，可調整）
+exclude_account_categories = ["DORMANT", "NO ACCOUNTS FILED", "MICRO ENTITY"]
+
+[registries.fr]
+# SIRENE StockUniteLegale。NAF Rev.2 前兩碼：26 電腦電子光學、27 電力設備、28 機械設備（同英國）
+naf_prefixes = ["26", "27", "28"]
+# 法律形式：5x 是商業公司（54 SARL、55 SA、57 SAS…）；1000 個人企業主不收（個資）
+legal_prefixes = ["54", "55", "56", "57"]
+# 員工人數級距：NN 沒有員工資料、00 沒員工、01 1-2 人、02 3-5 人 → 多半沒有官網，先排除（猜的，可調整）
+exclude_staff = ["", "NN", "00", "01", "02"]
+
+[registries.jp]
+# gBizINFO 法人基本情報 CSV「事業種目」（日本標準産業分類）含這些字就留。
+# 2026-10-26 真檔：580 萬家裡有填事業種目的 15 萬家，幾乎都只寫大類（「E:製造業」），中類（29 電気機械）只有零星幾筆，
+# 所以用大類篩；食品、紡織也會進來，看官網對不到關鍵字就送人工
+industry_words = ["E:製造業"]
+# 組織種別：301 株式会社、302 有限会社、305 合同会社
+org_types = ["301", "302", "305"]
+# 只留登記檔有官網的（有官網的只有 4.5 萬家，猜網域對日文公司名沒用）
+require_website = true
+
+[discover]
+max_candidates = 6              # 每家最多猜幾個網址（猜的，可調整）
+max_candidates_by_country = { TW = 8 }   # 台灣多試品牌字（猜的，可調整）
+# 只留品牌字：英文名結尾的這些通用字去掉（CHI HUA MACHINERY → chi-hua）（2026-11-02，看人工找到的官網）
+drop_words = { TW = ["technology", "technologies", "tech", "industrial", "industry", "industries", "electronic", "electronics", "electric", "electrical", "enterprise", "enterprises", "international", "precision", "machinery", "machine", "engineering", "group", "taiwan", "trading", "manufacturing", "mfg", "development", "science", "scientific", "materials", "material", "plastic", "plastics", "metal", "optoelectronics", "optical", "automation", "instrument", "instruments", "systems", "system"] }
+http_fallback = ["TW"]          # https 連不上再試 http（台灣小公司官網常沒有憑證）
+proof_pages = 3                 # 首頁只看到公司名時，再看幾頁找註冊編號／郵遞區號（猜的，可調整）
+[search]
+# 自架的 searchcrawl（C:/Users/tseng/searchcrawl，npm start）：不用 API key。背後是 DuckDuckGo（非官方），用太兇會被限速
+url = "http://127.0.0.1:3002/v1/search"
+results = 8                     # 每次搜尋要幾筆結果（猜的，可調整）
+max_sites = 3                   # 最多確認幾個網站（猜的，可調整）
+timeout_seconds = 60
+lang = "zh-TW"
+country = "tw"
+region = { TW = ["zh-TW", "tw"], GB = ["en", "gb"], JP = ["ja", "jp"], FR = ["fr", "fr"] }
+# 名錄、求職、社群、電商、新聞：頁面上常有統編和電話，但不是這家公司的官網，直接跳過
+skip_domains = ["twincn.com", "findbiz.nat.gov.tw", "gcis.nat.gov.tw", "104.com.tw", "1111.com.tw", "518.com.tw",
+                "yes123.com.tw", "cakeresume.com", "facebook.com", "instagram.com", "youtube.com", "twitter.com",
+                "x.com", "opengovtw.com", "twfile.com", "findcompany.com.tw", "iyp.com.tw", "taiwantrade.com",
+                "made-in-china.com", "alibaba.com", "wikipedia.org", "mobile01.com", "ctee.com.tw", "udn.com",
+                "chinatimes.com", "ltn.com.tw", "cnyes.com", "moneydj.com", "twse.com.tw", "tpex.org.tw",
+                "data.gov.tw", "trade.gov.tw", "1688.com", "amazon.com", "shopee.tw", "ruten.com.tw", "pchome.com.tw",
+                "goodinfo.tw", "wantgoo.com", "statementdog.com", "zhihu.com", "baidu.com", "dnb.com",
+                "bizprofile.net", "companylist.org", "tw.kompass.com", "kompass.com", "europages.com",
+                "thomasnet.com", "globalsources.com", "tradekey.com", "ec21.com", "yellowpages.com.tw",
+                "twbusiness.nat.gov.tw", "google.com", "bing.com", "duckduckgo.com", "yahoo.com", "line.me",
+                "ptt.cc", "dcard.tw", "pixnet.net", "blogspot.com", "medium.com", "github.com",
+                "teamtaiwan.info", "companys.com.tw", "mygov.tw", "tw66.com.tw", "web66.tw", "web66.com.tw",
+                # 國外名錄（英國、日本、法國、全球）
+                "company-information.service.gov.uk", "endole.co.uk", "companycheck.co.uk", "bizdb.co.uk",
+                "yell.com", "checkcompany.co.uk", "opencorporates.com", "zoominfo.com", "crunchbase.com",
+                "glassdoor.com", "glassdoor.co.uk", "indeed.com", "uk.indeed.com", "bloomberg.com", "rocketreach.co",
+                "houjin-bangou.nta.go.jp", "info.gbiz.go.jp", "baseconnect.in", "salesnow.jp", "alarmbox.jp",
+                "mapion.co.jp", "ekiten.jp", "wantedly.com", "en-japan.com", "mynavi.jp", "rikunabi.com", "doda.jp",
+                "jp.indeed.com", "societe.com", "pappers.fr", "infogreffe.fr", "verif.com", "manageo.fr",
+                "annuaire-entreprises.data.gouv.fr", "pagesjaunes.fr", "societeinfo.com", "corporama.com",
+                "fr.kompass.com", "b-reputation.com", "fr.indeed.com"]   # 黃頁平台的公司子網域也不算官網
+
+[discover.tlds]
+GB = [".co.uk", ".com", ".uk"]
+JP = [".co.jp", ".jp", ".com"]
+TW = [".com.tw", ".com", ".tw"]
+FR = [".fr", ".com"]
+default = [".com"]
